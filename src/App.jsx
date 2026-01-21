@@ -1,9 +1,9 @@
-import Component from "./components/Component";
+import Components from "./components/Components";
 
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Component />
+      <Components />
     </div>
   );
 }
