@@ -2,145 +2,116 @@ const express = require('express');
 const pool = require('./dbpg.js');
 const router = express.Router();
 
-function formatLocalTS(ts) {
-  const d = new Date(ts);
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
+const pad = (n) => n.toString().padStart(2, '0');
 
-function formatLocalDate(d) {
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function pad(n) {
-  return n.toString().padStart(2, '0');
-}
+const MORNING_PEAK = new Set([6, 7, 8, 9]);
+const EVENING_PEAK = new Set([18, 19, 20, 21]);
 
 router.get('/', async (req, res) => {
   try {
-    const { scno, percent, window } = req.query;
+    const { scno, startdate, enddate, per, window } = req.query;
 
-    if (!scno) {
-      return res.status(400).json({ message: "Missing scno" });
+    if (!scno || !startdate || !enddate) {
+      return res.status(400).json({ message: 'Missing scno, startdate or enddate' });
     }
 
-    const pct = Number(percent);
-    if (![10, 20, 30].includes(pct)) {
-      return res.status(400).json({ message: "percent must be 10, 20, or 30" });
+    const percent = Number(per ?? 0);
+    if (percent < 0 || percent > 100) {
+      return res.status(400).json({ message: 'per must be a number between 0 and 100' });
     }
 
-    if (!['mor', 'eve', 'both'].includes(window)) {
-      return res.status(400).json({ message: "window must be mor, eve, or both" });
+    if (startdate > enddate) {
+      return res.status(400).json({ message: 'startdate cannot be after enddate' });
     }
 
-    const dateQuery = `
-      SELECT dt FROM (
-        SELECT DISTINCT ts::date AS dt
-        FROM ht_blp
+    const win = window?.toUpperCase() ?? 'B';
+    if (!['M', 'E', 'B', 'N'].includes(win)) {
+      return res.status(400).json({ message: 'window must be one of M, E, B, N' });
+    }
+
+    let hourlyData = [];
+
+    if (startdate === enddate) {
+      const query = `
+        SELECT ts, wh_imp
+        FROM ht_blp_combined
         WHERE scno = $1
-        ORDER BY dt DESC
-        LIMIT 30
-      ) d
-      ORDER BY dt ASC;
-    `;
-    const dateResult = await pool.query(dateQuery, [scno]);
+          AND ts::date = $2
+        ORDER BY ts ASC;
+      `;
 
-    if (dateResult.rows.length === 0) {
-      return res.status(404).json({ message: "No data found for this SCNO" });
+      const { rows } = await pool.query(query, [scno, startdate]);
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'No readings found for the given date' });
+      }
+
+      hourlyData = rows.map((row) => {
+        const d = new Date(row.ts);
+        return { hour: d.getHours(), consumption: row.wh_imp / 1000 }; // kWh
+      });
+    } else {
+      const query = `
+        SELECT
+          EXTRACT(HOUR FROM ts) AS hour,
+          SUM(wh_imp) AS total_wh,
+          COUNT(wh_imp) AS sample_count
+        FROM ht_blp_combined
+        WHERE scno = $1
+          AND ts::date BETWEEN $2 AND $3
+        GROUP BY EXTRACT(HOUR FROM ts)
+        ORDER BY hour;
+      `;
+
+      const { rows } = await pool.query(query, [scno, startdate, enddate]);
+      if (rows.length === 0) {
+        return res.status(404).json({ message: 'No readings found for the given date range' });
+      }
+
+      hourlyData = rows.map((row) => ({
+        hour: Number(row.hour),
+        consumption: (row.total_wh / row.sample_count) / 1000,
+      }));
     }
 
-    const dataQuery = `
-      SELECT ts, wh_imp
-      FROM ht_blp
-      WHERE scno = $1
-        AND ts::date = ANY($2::date[])
-      ORDER BY ts ASC;
-    `;
-    const dateArray = dateResult.rows.map(r => r.dt);
-    const result = await pool.query(dataQuery, [scno, dateArray]);
+    if (percent > 0 && win !== 'N') {
+      let removedEnergy = 0;
+      let nonPeakCount = 0;
 
-    const whMap = new Map();
-    for (const row of result.rows) {
-      whMap.set(formatLocalTS(row.ts), row.wh_imp);
-    }
+      const morningHours = win === 'M' || win === 'B' ? MORNING_PEAK : new Set();
+      const eveningHours = win === 'E' || win === 'B' ? EVENING_PEAK : new Set();
 
-    const hourlySum = Array(24).fill(0);
-    const hourlyCount = Array(24).fill(0);
-
-    for (const r of dateResult.rows) {
-      const currentDate = new Date(r.dt);
-      const formattedDate = formatLocalDate(currentDate);
-
-      for (let hour = 0; hour < 24; hour++) {
-        const halfHourKey = `${formattedDate} ${pad(hour)}:30:00`;
-        let nextHourKey;
-
-        if (hour === 23) {
-          const nextDay = new Date(currentDate);
-          nextDay.setDate(nextDay.getDate() + 1);
-          nextHourKey = `${formatLocalDate(nextDay)} 00:00:00`;
+      hourlyData.forEach((h) => {
+        if (morningHours.has(h.hour) || eveningHours.has(h.hour)) {
+          const reduction = h.consumption * (percent / 100);
+          h.consumption -= reduction;
+          removedEnergy += reduction;
         } else {
-          nextHourKey = `${formattedDate} ${pad(hour + 1)}:00:00`;
+          nonPeakCount++;
         }
+      });
 
-        const v1 = whMap.get(halfHourKey) ?? 0;
-        const v2 = whMap.get(nextHourKey) ?? 0;
-
-        if (v1 !== 0 || v2 !== 0) {
-          hourlySum[hour] += (v1 + v2) / 1000;
-          hourlyCount[hour] += 1;
-        }
-      }
-    }
-
-    const hourly = Array(24).fill(null).map((_, h) => {
-      if (hourlyCount[h] === 0) return null;
-      return hourlySum[h] / hourlyCount[h];
-    });
-
-    const applyShift = (sources, targets) => {
-      let removed = 0;
-
-      for (const h of sources) {
-        if (hourly[h] == null) continue;
-        const cut = hourly[h] * (pct / 100);
-        hourly[h] -= cut;
-        removed += cut;
-      }
-
-      const addPerHour = removed / targets.length;
-      for (const h of targets) {
-        if (hourly[h] == null) continue;
-        hourly[h] += addPerHour;
-      }
-    };
-
-    if (window === 'mor' || window === 'both') {
-      applyShift([6, 7], [4, 5]);
-      applyShift([8, 9], [10, 11]);
-    }
-
-    if (window === 'eve' || window === 'both') {
-      applyShift([18, 19], [16, 17]);
-      applyShift([20, 21], [22, 23]);
-    }
-
-    const response = [];
-    for (let h = 0; h < 24; h++) {
-      if (hourly[h] != null) {
-        response.push({
-          hour: `${pad(h)}:00`,
-          avg_consumption: hourly[h].toFixed(2)
+      if (nonPeakCount > 0) {
+        const redistribution = removedEnergy / nonPeakCount;
+        hourlyData.forEach((h) => {
+          if (!morningHours.has(h.hour) && !eveningHours.has(h.hour)) {
+            h.consumption += redistribution;
+          }
         });
       }
     }
 
+    const response = hourlyData
+      .sort((a, b) => a.hour - b.hour)
+      .map((h) => ({
+        hour: `${pad(h.hour)}:00`,
+        consumption: h.consumption.toFixed(2),
+      }));
+
     return res.json(response);
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error('Error fetching hourly consumption:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
