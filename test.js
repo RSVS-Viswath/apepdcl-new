@@ -6,27 +6,36 @@ const pad = (n) => n.toString().padStart(2, '0');
 
 const MORNING_PEAK = new Set([6, 7, 8, 9]);
 const EVENING_PEAK = new Set([18, 19, 20, 21]);
+const ALL_PEAK = new Set([...MORNING_PEAK, ...EVENING_PEAK]);
 
 router.get('/', async (req, res) => {
   try {
-    const { scno, startdate, enddate, per, window } = req.query;
+    const { scno, startdate, enddate, per, window = 'B' } = req.query;
 
     if (!scno || !startdate || !enddate) {
-      return res.status(400).json({ message: 'Missing scno, startdate or enddate' });
+      return res.status(400).json({
+        message: 'Missing scno, startdate or enddate',
+      });
     }
 
     const percent = Number(per ?? 0);
+
     if (percent < 0 || percent > 100) {
-      return res.status(400).json({ message: 'per must be a number between 0 and 100' });
+      return res.status(400).json({
+        message: 'per must be a number between 0 and 100',
+      });
+    }
+
+    if (!['M', 'E', 'B'].includes(window)) {
+      return res.status(400).json({
+        message: 'window must be one of M, E, or B',
+      });
     }
 
     if (startdate > enddate) {
-      return res.status(400).json({ message: 'startdate cannot be after enddate' });
-    }
-
-    const win = window?.toUpperCase() ?? 'B';
-    if (!['M', 'E', 'B', 'N'].includes(win)) {
-      return res.status(400).json({ message: 'window must be one of M, E, B, N' });
+      return res.status(400).json({
+        message: 'startdate cannot be after enddate',
+      });
     }
 
     let hourlyData = [];
@@ -41,13 +50,19 @@ router.get('/', async (req, res) => {
       `;
 
       const { rows } = await pool.query(query, [scno, startdate]);
+
       if (rows.length === 0) {
-        return res.status(404).json({ message: 'No readings found for the given date' });
+        return res.status(404).json({
+          message: 'No readings found for the given date',
+        });
       }
 
       hourlyData = rows.map((row) => {
         const d = new Date(row.ts);
-        return { hour: d.getHours(), consumption: row.wh_imp / 1000 }; // kWh
+        return {
+          hour: d.getHours(),
+          consumption: row.wh_imp / 1000,
+        };
       });
     } else {
       const query = `
@@ -63,8 +78,11 @@ router.get('/', async (req, res) => {
       `;
 
       const { rows } = await pool.query(query, [scno, startdate, enddate]);
+
       if (rows.length === 0) {
-        return res.status(404).json({ message: 'No readings found for the given date range' });
+        return res.status(404).json({
+          message: 'No readings found for the given date range',
+        });
       }
 
       hourlyData = rows.map((row) => ({
@@ -73,41 +91,57 @@ router.get('/', async (req, res) => {
       }));
     }
 
-    if (percent > 0 && win !== 'N') {
-      let removedEnergy = 0;
-      let nonPeakCount = 0;
 
-      const morningHours = win === 'M' || win === 'B' ? MORNING_PEAK : new Set();
-      const eveningHours = win === 'E' || win === 'B' ? EVENING_PEAK : new Set();
+    let totalReducedKwh = 0;
+
+    if (percent > 0) {
+      let removedEnergy = 0;
+
+      const shouldReduce = (hour) => {
+        if (window === 'M') return MORNING_PEAK.has(hour);
+        if (window === 'E') return EVENING_PEAK.has(hour);
+        return ALL_PEAK.has(hour); // B
+      };
+
+      const shouldReceive = (hour) => {
+        if (window === 'M')
+          return !MORNING_PEAK.has(hour) && !EVENING_PEAK.has(hour);
+        if (window === 'E')
+          return !EVENING_PEAK.has(hour) && !MORNING_PEAK.has(hour);
+        return !ALL_PEAK.has(hour); // B
+      };
 
       hourlyData.forEach((h) => {
-        if (morningHours.has(h.hour) || eveningHours.has(h.hour)) {
+        if (shouldReduce(h.hour)) {
           const reduction = h.consumption * (percent / 100);
           h.consumption -= reduction;
           removedEnergy += reduction;
-        } else {
-          nonPeakCount++;
         }
       });
 
-      if (nonPeakCount > 0) {
-        const redistribution = removedEnergy / nonPeakCount;
-        hourlyData.forEach((h) => {
-          if (!morningHours.has(h.hour) && !eveningHours.has(h.hour)) {
-            h.consumption += redistribution;
-          }
+      totalReducedKwh = removedEnergy;
+
+      const receivers = hourlyData.filter((h) => shouldReceive(h.hour));
+
+      if (receivers.length > 0) {
+        const redistribution = removedEnergy / receivers.length;
+        receivers.forEach((h) => {
+          h.consumption += redistribution;
         });
       }
     }
 
-    const response = hourlyData
+    const data = hourlyData
       .sort((a, b) => a.hour - b.hour)
       .map((h) => ({
         hour: `${pad(h.hour)}:00`,
         consumption: h.consumption.toFixed(2),
       }));
 
-    return res.json(response);
+    return res.json({
+      total_reduced_kwh: totalReducedKwh.toFixed(2),
+      data,
+    });
 
   } catch (error) {
     console.error('Error fetching hourly consumption:', error);

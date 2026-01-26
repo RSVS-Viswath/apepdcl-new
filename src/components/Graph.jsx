@@ -237,33 +237,51 @@ export default function Graph() {
                 </div>
               </div>
 
-              <div>
-                <div className="text-xs text-gray-500">Potential Savings :</div>
-                <div className="text-lg font-semibold">₹ 2,800 - 7,500</div>
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-xs text-gray-500">Potential Savings :</div>
+                  <div className="text-lg font-semibold">₹ 2,800 - 7,500</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Shifted (kWh):</div>
+                  <div className="text-lg font-semibold">0 kWh</div>
+                </div>
               </div>
             </>
           ) : (
             /* Price View */
             <>
               <div>
-                <div className="text-xs text-gray-500 mb-1">Target Price (₹/kWh):</div>
+                <div className="text-xs text-gray-500 mb-1">Target Price (₹):</div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-gray-500">₹</span>
                   </div>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
                     value={priceInput}
-                    onChange={(e) => setPriceInput(e.target.value)}
-                    placeholder="0.00"
+                    onChange={(e) => {
+                      // allow only whole numbers (digits)
+                      const digitsOnly = e.target.value.replace(/\D/g, "");
+                      setPriceInput(digitsOnly);
+                    }}
+                    placeholder="0"
                     className="w-full border rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <div className="text-xs text-gray-500">Shift By:</div>
-                <div className="text-lg font-semibold text-blue-600">5% <span className="text-black">-</span> 10%</div>
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-xs text-gray-500">Shift By (%):</div>
+                  <div className="text-lg font-semibold text-blue-600">5% <span className="text-black">-</span> 10%</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Shift By (kWh):</div>
+                  <div className="text-lg font-semibold">0 kWh</div>
+                </div>
               </div>
             </>
           )}
