@@ -6,7 +6,7 @@ import Settings from "./components/Settings";
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter >
       <Routes>
         <Route path="/login" element={<Login />} />
 

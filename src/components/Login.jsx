@@ -6,13 +6,31 @@ function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // ⚠️ placeholder auth (replace later)
-    if (username && password) {
-      localStorage.setItem("isAuthenticated", "true");
-      navigate("/");
+    try {
+      const res = await fetch("http://localhost:4000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // 🔴 REQUIRED
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+
+      // ✅ Cookie is set by backend
+      navigate("/"); // landing page
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Server unreachable");
     }
   };
 

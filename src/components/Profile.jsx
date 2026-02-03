@@ -32,9 +32,17 @@ export default function Profile() {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    navigate("/login", { replace: true });
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:4000/logout", {
+        method: "POST",
+        credentials: "include", 
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      navigate("/login", { replace: true });
+    }
   };
 
   return (

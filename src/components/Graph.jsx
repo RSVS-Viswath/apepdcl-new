@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
 
 export default function Graph() {
   const [shiftPercent, setShiftPercent] = useState(10);
-  const [peakWindow, setPeakWindow] = useState("Morning");
+  const [peakWindow, setPeakWindow] = useState(null);
   const [cardView, setCardView] = useState("percent"); // "percent" or "price"
   const [priceInput, setPriceInput] = useState("");
 
@@ -14,21 +14,13 @@ export default function Graph() {
     new Date().toISOString().split("T")[0]
   );
 
-  const baselineData = [
-    20, 18, 16, 15, 14, 15,
-    24, 30, 32, 30, 26,
-    22, 20, 19, 18, 20,
-    24, 28, 34, 36, 33,
-    29, 24, 22,
-  ];
+  const [baselineData, setBaselineData] = useState([]);
 
-  const actualData = [
-    18, 16, 15, 14, 13, 14,
-    22, 28, 30, 27, 24,
-    20, 19, 18, 17, 19,
-    22, 26, 32, 34, 31,
-    27, 22, 20,
-  ];
+
+  const [actualData, setActualData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+
 
   const series = [
     {
@@ -121,6 +113,82 @@ export default function Graph() {
     },
     colors: ["#13C4A9", "#6A42B2"],
   };
+
+
+  useEffect(() => {
+    async function fetchBaseline() {
+      try {
+        setLoading(true);
+  
+        const res = await fetch(
+          "https://ee.elementsenergies.com/api/fetchLast30HourlyAvgCons?scno=AKP031"
+        );
+  
+        const data = await res.json();
+  
+        // Convert API response → chart array
+        const hourly = Array(24).fill(0);
+  
+        data.forEach(d => {
+          const hour = parseInt(d.hour.split(":")[0]);
+          hourly[hour] = Number(d.avg_consumption);
+        });
+  
+        setBaselineData(hourly);
+      } catch (err) {
+        console.error("Baseline fetch failed", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  
+    fetchBaseline();
+  }, []);
+  
+  async function handleSimulate() {
+    try {
+      setLoading(true);
+  
+      const windowMap = {
+        Morning: "M",
+        Evening: "E",
+        Both: "B",
+      };
+
+      const windowParam = peakWindow ? windowMap[peakWindow] : "";
+
+  
+      const url =
+  `https://ee.elementsenergies.com/api/fetchActualConsPercent2` +
+  `?scno=AKP031` +
+  `&startdate=${startDate}` +
+  `&enddate=${endDate}` +
+  `&per=${shiftPercent}` +
+  (windowParam ? `&window=${windowParam}` : "");
+
+  
+      const res = await fetch(url);
+      const json = await res.json();
+  
+      const hourly = Array(24).fill(0);
+      json.data.forEach(d => {
+        const hour = parseInt(d.hour.split(":")[0]);
+        hourly[hour] = Number(d.consumption);
+      });
+  
+      setActualData(hourly);
+    } catch (err) {
+      console.error("Simulation failed", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+  
+
+  useEffect(() => {
+    handleSimulate();
+  }, []); // runs once on mount
+  
 
   return (
     <div className="lg:flex w-full gap-4">
@@ -286,7 +354,7 @@ export default function Graph() {
             </>
           )}
 
-          <button className="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">
+          <button onClick={handleSimulate} className="w-full bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">
             Simulate
           </button>
         </div>

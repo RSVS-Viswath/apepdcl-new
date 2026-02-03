@@ -14,23 +14,95 @@ export default function Settings() {
   const [phoneOtp, setPhoneOtp] = useState("");
   const [emailOtp, setEmailOtp] = useState("");
 
-  const handleVerifyPhone = () => {
-    // replace with real verification logic
-    if (phoneOtp.trim() !== "") {
-      setPhoneVerified(true);
-      setShowPhoneOtp(false);
-      setPhoneOtp("");
-    }
-  };
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleVerifyEmail = () => {
-    // replace with real verification logic
-    if (emailOtp.trim() !== "") {
-      setEmailVerified(true);
-      setShowEmailOtp(false);
-      setEmailOtp("");
+  const sendOtp = async (type) => {
+    try {
+      const res = await fetch("http://localhost:4000/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type }),
+      });
+  
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("OTP service unavailable");
     }
   };
+  
+  const verifyOtp = async (type, otp, setVerified, setShow, setOtp) => {
+    try {
+      const res = await fetch("http://localhost:4000/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ type, otp }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        alert(data.message || "Invalid OTP");
+        return;
+      }
+  
+      setVerified(true);
+      setShow(false);
+      setOtp("");
+    } catch (err) {
+      console.error(err);
+      alert("OTP verification failed");
+    }
+  };
+  
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+  
+    if (!emailVerified && !phoneVerified) {
+      alert("Please verify email or phone before resetting password");
+      return;
+    }
+  
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+  
+    setLoading(true);
+  
+    try {
+      const res = await fetch("http://localhost:4000/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // 🔴 REQUIRED
+        body: JSON.stringify({ newPassword }),
+      });
+  
+      const data = await res.json();
+  
+      if (!res.ok) {
+        alert(data.message || "Password reset failed");
+        return;
+      }
+  
+      alert("Password updated. Please login again.");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error(err);
+      alert("Server error");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -53,7 +125,7 @@ export default function Settings() {
 
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Settings</h2>
 
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handlePasswordReset}>
           <div className="grid gap-4 md:grid-cols-2">
             {/* Username spanning 2 columns */}
             <div className="flex flex-col md:col-span-2">
@@ -79,14 +151,18 @@ export default function Settings() {
                 {/* OTP link or Verified badge */}
                 {!phoneVerified ? (
                   <button
-                    type="button"
-                    onClick={() => setShowPhoneOtp(true)}
-                    className="text-sm text-blue-600 underline px-2 py-1 focus:outline-none"
-                    aria-expanded={showPhoneOtp}
-                    aria-controls="phone-otp-row"
-                  >
-                    OTP
-                  </button>
+                  type="button"
+                  onClick={() => {
+                    setShowPhoneOtp(true);
+                    sendOtp("phone");
+                  }}
+                  className="text-sm text-blue-600 underline px-2 py-1 focus:outline-none"
+                  aria-expanded={showPhoneOtp}
+                  aria-controls="phone-otp-row"
+                >
+                  OTP
+                </button>
+                
                 ) : (
                   <span className="px-3 py-1 bg-green-100 text-green-800 rounded-md text-sm">
                     Verified
@@ -105,12 +181,21 @@ export default function Settings() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
-                    type="button"
-                    onClick={handleVerifyPhone}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Verify
-                  </button>
+  type="button"
+  onClick={() =>
+    verifyOtp(
+      "phone",
+      phoneOtp,
+      setPhoneVerified,
+      setShowPhoneOtp,
+      setPhoneOtp
+    )
+  }
+  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+>
+  Verify
+</button>
+
                 </div>
               )}
 
@@ -132,14 +217,18 @@ export default function Settings() {
                 {/* OTP link or Verified badge */}
                 {!emailVerified ? (
                   <button
-                    type="button"
-                    onClick={() => setShowEmailOtp(true)}
-                    className="text-sm text-blue-600 underline px-2 py-1 focus:outline-none"
-                    aria-expanded={showEmailOtp}
-                    aria-controls="email-otp-row"
-                  >
-                    OTP
-                  </button>
+                  type="button"
+                  onClick={() => {
+                    setShowEmailOtp(true);
+                    sendOtp("email");
+                  }}
+                  className="text-sm text-blue-600 underline px-2 py-1 focus:outline-none"
+                  aria-expanded={showEmailOtp}
+                  aria-controls="email-otp-row"
+                >
+                  OTP
+                </button>
+                
                 ) : (
                   <span className="px-3 py-1 bg-green-100 text-green-800 rounded-md text-sm">
                     Verified
@@ -158,12 +247,21 @@ export default function Settings() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
-                    type="button"
-                    onClick={handleVerifyEmail}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Verify
-                  </button>
+  type="button"
+  onClick={() =>
+    verifyOtp(
+      "email",
+      emailOtp,
+      setEmailVerified,
+      setShowEmailOtp,
+      setEmailOtp
+    )
+  }
+  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+>
+  Verify
+</button>
+
                 </div>
               )}
 
@@ -178,29 +276,35 @@ export default function Settings() {
             <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700">New Password</label>
               <input
-                type="password"
-                placeholder="Enter new password"
-                className="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+  type="password"
+  placeholder="Enter new password"
+  value={newPassword}
+  onChange={(e) => setNewPassword(e.target.value)}
+  className="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+/>
             </div>
             <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700">Re-enter New Password</label>
               <input
-                type="password"
-                placeholder="Re-enter new password"
-                className="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+  type="password"
+  placeholder="Re-enter new password"
+  value={confirmPassword}
+  onChange={(e) => setConfirmPassword(e.target.value)}
+  className="mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+/>
             </div>
           </div>
 
           {/* Submit Button */}
           <div>
-            <button
-              type="submit"
-              className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              Submit
-            </button>
+          <button
+  type="submit"
+  disabled={loading}
+  className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:opacity-50"
+>
+  {loading ? "Updating..." : "Submit"}
+</button>
+
           </div>
         </form>
       </div>
