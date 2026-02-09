@@ -10,12 +10,12 @@ function Login() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:4000/login", {
+      const res = await fetch("http://localhost:4000/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // 🔴 REQUIRED
+        credentials: "include", 
         body: JSON.stringify({ username, password }),
       });
 
@@ -26,8 +26,7 @@ function Login() {
         return;
       }
 
-      // ✅ Cookie is set by backend
-      navigate("/"); // landing page
+      navigate("/"); 
     } catch (err) {
       console.error("Login error:", err);
       alert("Server unreachable");

@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
+import { useDate } from "../context/DateContext";
 import Chart from "react-apexcharts";
 
 export default function Graph() {
   const [shiftPercent, setShiftPercent] = useState(10);
   const [peakWindow, setPeakWindow] = useState(null);
-  const [cardView, setCardView] = useState("percent"); // "percent" or "price"
+  const [cardView, setCardView] = useState("percent"); 
   const [priceInput, setPriceInput] = useState("");
+  const { startdate, enddate, setStartdate, setEnddate } = useDate();
 
-  const [startDate, setStartDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
-  const [endDate, setEndDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+
+  
 
   const [baselineData, setBaselineData] = useState([]);
 
@@ -119,28 +117,37 @@ export default function Graph() {
     async function fetchBaseline() {
       try {
         setLoading(true);
-  
+    
         const res = await fetch(
-          "https://ee.elementsenergies.com/api/fetchLast30HourlyAvgCons?scno=AKP031"
+          "http://localhost:4000/api/fetchLast30HourlyAvgCons",
+          { credentials: "include" }
         );
-  
+    
+        if (!res.ok) {
+          throw new Error(`API failed: ${res.status}`);
+        }
+    
         const data = await res.json();
-  
-        // Convert API response → chart array
+    
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid API response format");
+        }
+    
         const hourly = Array(24).fill(0);
-  
-        data.forEach(d => {
-          const hour = parseInt(d.hour.split(":")[0]);
+    
+        data.forEach((d) => {
+          const hour = parseInt(d.hour.split(":")[0], 10);
           hourly[hour] = Number(d.avg_consumption);
         });
-  
+    
         setBaselineData(hourly);
       } catch (err) {
-        console.error("Baseline fetch failed", err);
+        console.error("Baseline fetch failed:", err);
       } finally {
         setLoading(false);
       }
     }
+    
   
     fetchBaseline();
   }, []);
@@ -154,25 +161,44 @@ export default function Graph() {
         Evening: "E",
         Both: "B",
       };
-
+  
       const windowParam = peakWindow ? windowMap[peakWindow] : "";
-
   
-      const url =
-  `https://ee.elementsenergies.com/api/fetchActualConsPercent2` +
-  `?scno=AKP031` +
-  `&startdate=${startDate}` +
-  `&enddate=${endDate}` +
-  `&per=${shiftPercent}` +
-  (windowParam ? `&window=${windowParam}` : "");
-
+      const params = new URLSearchParams({
+        startdate,
+        enddate
+      });
   
-      const res = await fetch(url);
+      if (cardView === "percent") {
+        params.append("per", shiftPercent.toString());
+      }
+  
+      if (cardView === "price") {
+        params.append("savings", priceInput || "0");
+      }
+  
+      if (windowParam) {
+        params.append("window", windowParam);
+      }
+  
+      const apiUrl =
+        cardView === "percent"
+          ? `http://localhost:4000/api/fetchActualConsPercent?${params.toString()}`
+          : `http://localhost:4000/api/fetchActualConsPrice?${params.toString()}`;
+  
+      const res = await fetch(apiUrl, {
+        credentials: "include",
+      });
+  
+      if (!res.ok) {
+        throw new Error(`API failed: ${res.status}`);
+      }
+  
       const json = await res.json();
   
       const hourly = Array(24).fill(0);
-      json.data.forEach(d => {
-        const hour = parseInt(d.hour.split(":")[0]);
+      json.data.forEach((d) => {
+        const hour = parseInt(d.hour.split(":")[0], 10);
         hourly[hour] = Number(d.consumption);
       });
   
@@ -184,10 +210,12 @@ export default function Graph() {
     }
   }
   
+  
+  
 
   useEffect(() => {
     handleSimulate();
-  }, []); // runs once on mount
+  }, [startdate, enddate, cardView, shiftPercent, peakWindow, priceInput]); 
   
 
   return (
@@ -200,7 +228,6 @@ export default function Graph() {
       </div>
 
       <div className="flex flex-col gap-4 w-full lg:w-[30%]">
-        {/* Date Picker Card */}
         <div className="bg-white rounded-lg shadow p-4 space-y-4">
           <h3 className="font-semibold text-sm">Select Period</h3>
           
@@ -211,8 +238,8 @@ export default function Graph() {
               </label>
               <input
                 type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={startdate}
+                onChange={(e) => setStartdate(e.target.value)}
                 className="w-full border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -223,8 +250,8 @@ export default function Graph() {
               </label>
               <input
                 type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                value={enddate}
+                onChange={(e) => setEnddate(e.target.value)}
                 className="w-full border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -233,7 +260,6 @@ export default function Graph() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-4 space-y-4">
-          {/* Toggle Switch */}
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-sm">Load Shift - Reduction</h3>
             <div className="flex bg-gray-100 rounded-lg border overflow-hidden">
