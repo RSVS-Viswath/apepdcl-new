@@ -3,47 +3,99 @@ import { FiUser, FiSettings, FiLogOut, FiBarChart2 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import Chart from "react-apexcharts";
 import { useDate } from "../context/DateContext";
+import { useAuth } from "../context/AuthContext";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+import { DateRange } from "react-date-range";
+import { format } from "date-fns";
 
 const inRange = (hour, start, end) => {
   if (start <= end) return hour >= start && hour < end;
   return hour >= start || hour < end;
 };
 
-function tariffForIndustrial(hour) {
-  if (inRange(hour, 6, 10) || inRange(hour, 18, 22)) {
-    return { label: "Peak", rate: "7.8", colorClass: "text-red-800 bg-red-100" };
+function tariffByCategory(hour, category) {
+  // COMMERCIAL
+  if (category === "COMMERCIAL-HT") {
+    if (hour >= 18 && hour < 20) {
+      return {
+        label: "Peak",
+        rate: "8.65",
+        window: "18:00–20:00",
+        colorClass: "text-red-800 bg-red-100"
+      };
+    }
+
+    return {
+      label: "Normal",
+      rate: "7.65",
+      window: "00:00–18:00 & 20:00–24:00",
+      colorClass: "text-yellow-800 bg-yellow-100"
+    };
   }
-  if (inRange(hour, 10, 15) || inRange(hour, 0, 6)) {
-    return { label: "Off-Peak", rate: "5.55", colorClass: "text-green-800 bg-green-100" };
+
+  // INDUSTRIAL
+  if (category === "INDUSTRY (GENERAL)-HT") {
+    if ((hour >= 6 && hour < 10) || (hour >= 18 && hour < 22)) {
+      return {
+        label: "Peak",
+        rate: "7.8",
+        window: "06:00–10:00 & 18:00–22:00",
+        colorClass: "text-red-800 bg-red-100"
+      };
+    }
+
+    if ((hour >= 0 && hour < 6) || (hour >= 10 && hour < 15)) {
+      return {
+        label: "Off-Peak",
+        rate: "5.55",
+        window: "00:00–06:00 & 10:00–15:00",
+        colorClass: "text-green-800 bg-green-100"
+      };
+    }
+
+    return {
+      label: "Normal",
+      rate: "6.3",
+      window: "15:00–18:00 & 22:00–24:00",
+      colorClass: "text-yellow-800 bg-yellow-100"
+    };
   }
-  return { label: "Normal", rate: "6.3", colorClass: "text-yellow-800 bg-yellow-100" };
+
+  // fallback
+  return {
+    label: "Unknown",
+    rate: "--",
+    window: "--",
+    colorClass: "text-gray-700 bg-gray-100"
+  };
 }
 
-function Banner() {
-  const profile = "Industrial"; 
-  const now = new Date();
-  const hour = now.getHours();
-  const tariff = tariffForIndustrial(hour);
 
-  const windowText = (() => {
-    if (tariff.label === "Peak") return "06:00-10:00 & 18:00-22:00";
-    if (tariff.label === "Off-Peak") return "00:00-06:00 & 10:00-15:00";
-    return "15:00-18:00 & 22:00-24:00";
-  })();
+
+function Banner() {
+  const { user } = useAuth();
+
+  const category = user?.category_desc;
+  const hour = new Date().getHours();
+
+  if (!category) return null;
+
+  const tariff = tariffByCategory(hour, category);
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-          <div
-            className={`flex-1 px-3 py-1.5 rounded-md font-semibold text-sm text-center
-              ${tariff.colorClass}`}
-            role="status"
-            aria-live="polite"
-          >
-            ⚠ {tariff.label} Tariff Active ({windowText}) ₹{tariff.rate}/unit
-          </div>
+      <div
+        className={`flex-1 px-3 py-1.5 rounded-md font-semibold text-sm text-center ${tariff.colorClass}`}
+        role="status"
+        aria-live="polite"
+      >
+        ⚡ {tariff.label} Tariff Active ({tariff.window}) ₹{tariff.rate}/unit
+      </div>
     </div>
   );
 }
+
 
 function AnalyticsButton() {
   const navigate = useNavigate();
@@ -90,7 +142,7 @@ function ProfileButton() {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:4000/logout", {
+      await fetch("/api/logout", {
         method: "POST",
         credentials: "include",
       });
@@ -148,35 +200,109 @@ function ProfileButton() {
   );
 }
 
-function SelectPeriodCard({ startDate, endDate, setStartDate, setEndDate }) {
+function SelectPeriodCard({ startDate, endDate, setStartDate, setEndDate, setRangeConfirmed }) {
+  const [open, setOpen] = useState(false);
+
+  const selectionRange = {
+    startDate: startDate ? new Date(startDate) : new Date(),
+    endDate: endDate ? new Date(endDate) : new Date(),
+    key: "selection",
+  };
+
+  const handleSelect = (ranges) => {
+    const { startDate, endDate } = ranges.selection;
+
+    setStartDate(format(startDate, "yyyy-MM-dd"));
+    setEndDate(format(endDate, "yyyy-MM-dd"));
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow p-3 space-y-3">
-      <h3 className="font-semibold text-sm">Select Period</h3>
+    <div className="bg-white rounded-lg shadow p-3 relative">
+      <h3 className="font-semibold text-sm mb-2">Select Period</h3>
 
-      <div className="flex gap-2">
-        <div className="w-1/2">
-          <label className="block text-xs text-gray-500 mb-1">Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+      {/* Trigger Inputs */}
+<div
+  onClick={() => setOpen(true)}
+  className="grid grid-cols-2 gap-2 cursor-pointer"
+>
+  <div className="border rounded-lg px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 transition">
+    <div className="text-xs text-gray-500">Start Date</div>
+    <div className="font-medium">
+      {startDate || "Select"}
+    </div>
+  </div>
 
-        <div className="w-1/2">
-          <label className="block text-xs text-gray-500 mb-1">End Date</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+  <div className="border rounded-lg px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 transition">
+    <div className="text-xs text-gray-500">End Date</div>
+    <div className="font-medium">
+      {endDate || "Select"}
+    </div>
+  </div>
+</div>
+
+
+      {/* Calendar Modal */}
+{open && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setOpen(false)}
+    />
+
+    {/* Modal */}
+    <div className="relative bg-white rounded-2xl shadow-2xl w-[95%] max-w-4xl p-5 z-10">
+
+      <h3 className="text-lg font-semibold mb-4 text-center">
+        Select Date Range
+      </h3>
+
+      <div className="flex justify-center">
+        <div className="scale-95">
+          <DateRange
+            ranges={[selectionRange]}
+            onChange={handleSelect}
+            months={2}
+            direction="horizontal"
+            showSelectionPreview={true}
+            moveRangeOnFirstSelection={false}
+            rangeColors={["#7c3aed"]}
+            weekdayDisplayFormat="EE"
+            dayDisplayFormat="d"
           />
         </div>
       </div>
+
+      <div className="flex justify-end mt-6 gap-2">
+        <button
+          onClick={() => setOpen(false)}
+          className="px-4 py-2 rounded-lg border text-sm"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            setOpen(false);
+            setRangeConfirmed(prev => !prev);
+          }}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700"
+        >
+          Apply
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
+
+
+
     </div>
   );
 }
+
 
 function LoadShiftCard({
   cardView,
@@ -407,6 +533,8 @@ function GraphArea({startDate,
   endDate,
   setStartDate,
   setEndDate,
+  rangeConfirmed,
+  setRangeConfirmed,
   mcData,
   mcLoading,
   baselineData,
@@ -420,13 +548,14 @@ function GraphArea({startDate,
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingSubmitted, setBookingSubmitted] = useState(false);
   const [bookingDateTime, setBookingDateTime] = useState("");
-  const [bookingShiftPercent, setBookingShiftPercent] = useState(shiftPercent);
+  const [shiftKwh, setShiftKwh] = useState("");
   const [bookingWindow, setBookingWindow] = useState(peakWindow);
+  const [shiftMode, setShiftMode] = useState("kwh"); 
+  const [equipmentCount, setEquipmentCount] = useState("");
+  const [equipmentList, setEquipmentList] = useState([]);
+  const [yesterdayPercent, setYesterdayPercent] = useState("");
 
-
-
-  
-  
+   
 
   async function handleShift() {
     if (!startDate || !endDate) return;
@@ -463,8 +592,8 @@ function GraphArea({startDate,
       // 👇 Correct API selection
       const apiUrl =
         cardView === "percent"
-          ? `http://localhost:4000/api/fetchActualConsPercent?${params.toString()}`
-          : `http://localhost:4000/api/fetchActualConsPrice?${params.toString()}`;
+          ? `/api/fetchActualConsPercent?${params.toString()}`
+          : `/api/fetchActualConsPrice?${params.toString()}`;
   
       const res = await fetch(apiUrl, {
         credentials: "include",
@@ -501,30 +630,55 @@ function GraphArea({startDate,
     >
       <div className="flex-1 space-y-2 flex flex-col min-h-0">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-  {mcLoading || !mcData ? (
-    [...Array(4)].map((_, i) => (
-      <div
-        key={i}
-        className="bg-white rounded-lg shadow p-3 h-16 animate-pulse"
-      />
-    ))
-  ) : (
-    [
-      { label: "Energy Used", value: `${mcData.total_consumption_kwh} kWh` },
-      { label: "Peak Hour Consumption", value: `${mcData.peak_consumption_kwh} kWh` },
-      { label: "Peak Hour Cost", value: `₹ ${mcData.peak_cost}` },
-      { label: "CO₂ Savings", value: `${mcData.co2_savings} kg` },
-    ].map((item) => (
-      <div
-        key={item.label}
-        className="bg-white rounded-lg shadow p-3 text-center h-16 flex flex-col justify-center"
-      >
-        <div className="text-xs text-gray-500">{item.label}</div>
-        <div className="text-sm font-semibold">{item.value}</div>
+  {[
+    {
+      label: "Energy Used",
+      value: mcData?.total_consumption_kwh
+        ? `${mcData.total_consumption_kwh} kWh`
+        : null,
+    },
+    {
+      label: "Peak Hour Consumption",
+      value: mcData?.peak_consumption_kwh
+        ? `${mcData.peak_consumption_kwh} kWh`
+        : null,
+    },
+    {
+      label: "Peak Hour Cost",
+      value: mcData?.peak_cost
+        ? `₹ ${mcData.peak_cost}`
+        : null,
+    },
+    {
+      label:
+        mcData?.co2_savings >= 0
+          ? "CO₂ Savings"
+          : "CO₂ Emission",
+      value:
+        mcData?.co2_savings !== undefined
+          ? `${Math.abs(mcData.co2_savings)} kg`
+          : null,
+    },
+  ].map((item) => (
+    <div
+      key={item.label}
+      className="bg-white rounded-lg shadow p-3 text-center h-16 flex flex-col justify-center"
+    >
+      <div className="text-xs text-gray-500">
+        {item.label}
       </div>
-    ))
-  )}
+
+      <div className="text-sm font-semibold mt-1">
+        {mcLoading || !item.value ? (
+          <span className="inline-block w-16 h-4 bg-gray-200 rounded animate-pulse" />
+        ) : (
+          item.value
+        )}
+      </div>
+    </div>
+  ))}
 </div>
+
 
 
         <GraphChart baselineData={baselineData} actualData={actualData} />
@@ -534,7 +688,7 @@ function GraphArea({startDate,
         className="w-full lg:w-[28%] flex flex-col gap-2"
         style={{ maxHeight: "calc(100vh - 6.5rem)", overflow: "auto", paddingBottom: 8 }}
       >
-        <SelectPeriodCard startDate={startDate} endDate={endDate} setStartDate={setStartDate} setEndDate={setEndDate} />
+        <SelectPeriodCard startDate={startDate} endDate={endDate} setStartDate={setStartDate} setEndDate={setEndDate} setRangeConfirmed={setRangeConfirmed} />
 
         <LoadShiftCard
           cardView={cardView}
@@ -572,28 +726,15 @@ function GraphArea({startDate,
         <div className="space-y-4">
           <div>
             <label className="text-xs text-gray-500 block mb-1">
-              Select Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              value={bookingDateTime}
-              onChange={(e) => setBookingDateTime(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
+  Select Date
+</label>
+<input
+  type="date"
+  value={bookingDateTime}
+  onChange={(e) => setBookingDateTime(e.target.value)}
+  className="w-full border rounded-lg px-3 py-2 text-sm"
+ />
 
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">
-              Shift Percentage
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={bookingShiftPercent}
-              onChange={(e) => setBookingShiftPercent(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            />
           </div>
 
           <div>
@@ -611,6 +752,91 @@ function GraphArea({startDate,
               <option value="Both">Both</option>
             </select>
           </div>
+
+          <div className="space-y-1">
+  <div className="text-sm font-medium">
+    Shift:
+  </div>
+  <div className="text-xs text-gray-500">
+    How much would you like to shift?
+  </div>
+</div>
+
+    <div className="flex bg-gray-100 rounded-lg border overflow-hidden text-xs mt-2">
+  {[
+    { key: "kwh", label: "kWh" },
+    { key: "equipment", label: "Equipment" },
+    { key: "percent", label: "% of yesterday's peak" },
+  ].map((item) => (
+    <button
+      key={item.key}
+      onClick={() => setShiftMode(item.key)}
+      className={`flex-1 py-1.5 font-medium transition ${
+        shiftMode === item.key
+          ? "bg-purple-600 text-white"
+          : "text-gray-700 hover:bg-purple-50"
+      }`}
+      type="button"
+    >
+      {item.label}
+    </button>
+  ))}
+</div>
+
+{shiftMode === "kwh" && (
+  <input
+    type="number"
+    placeholder="Enter kWh to shift"
+    value={shiftKwh}
+    onChange={(e) => setShiftKwh(e.target.value)}
+    className="w-full border rounded-lg px-3 py-2 text-sm mt-2"
+  />
+)}
+
+{shiftMode === "equipment" && (
+  <div className="space-y-2 mt-2">
+    <input
+      type="number"
+      min="1"
+      placeholder="Number of equipments"
+      value={equipmentCount}
+      onChange={(e) => {
+        const count = Number(e.target.value);
+        setEquipmentCount(count);
+        setEquipmentList(Array(count).fill(""));
+      }}
+      className="w-full border rounded-lg px-3 py-2 text-sm"
+    />
+
+    {equipmentList.map((_, idx) => (
+      <input
+        key={idx}
+        type="text"
+        placeholder={`Equipment ${idx + 1} description`}
+        value={equipmentList[idx]}
+        onChange={(e) => {
+          const updated = [...equipmentList];
+          updated[idx] = e.target.value;
+          setEquipmentList(updated);
+        }}
+        className="w-full border rounded-lg px-3 py-2 text-sm"
+      />
+    ))}
+  </div>
+)}
+
+{shiftMode === "percent" && (
+  <input
+    type="number"
+    placeholder="% of yesterday's peak"
+    value={yesterdayPercent}
+    onChange={(e) => setYesterdayPercent(e.target.value)}
+    className="w-full border rounded-lg px-3 py-2 text-sm mt-2"
+  />
+)}
+
+
+
 
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-500">Estimated Savings</div>
@@ -670,39 +896,46 @@ export default function Component() {
 
   const [baselineData, setBaselineData] = useState(Array(24).fill(0));
   const [actualData, setActualData] = useState(Array(24).fill(0));
+  const [rangeConfirmed, setRangeConfirmed] = useState(true);
+
+
+  const { user, loading } = useAuth();
+
 
   useEffect(() => {
-    async function fetchMiniCards() {
-      try {
-        setMcLoading(true);
-  
-        const res = await fetch(
-          `http://localhost:4000/api/fetchMC?startdate=${startdate}&enddate=${enddate}`,
-          { credentials: "include" }
-        );
-  
-        if (!res.ok) throw new Error("Failed to fetch minicards");
-  
-        const json = await res.json();
-        setMcData(json);
-      } catch (err) {
-        console.error("MiniCards fetch failed", err);
-      } finally {
-        setMcLoading(false);
-      }
+  if (!rangeConfirmed || !startdate || !enddate) return;
+
+  async function fetchMiniCards() {
+    try {
+      setMcLoading(true);
+
+      const res = await fetch(
+        `/api/fetchMC?startdate=${startdate}&enddate=${enddate}`,
+        { credentials: "include" }
+      );
+
+      if (!res.ok) throw new Error("Failed to fetch minicards");
+
+      const json = await res.json();
+      setMcData(json);
+    } catch (err) {
+      console.error("MiniCards fetch failed", err);
+    } finally {
+      setMcLoading(false);
     }
-  
-    if (startdate && enddate) {
-      fetchMiniCards();
-    }
-  }, [startdate, enddate]);
+  }
+
+  fetchMiniCards();
+}, [rangeConfirmed]);
+
+
 
   useEffect(() => {
     async function fetchBaseline() {
       try {
     
         const res = await fetch(
-          "http://localhost:4000/api/fetchLast30HourlyAvgCons",
+          "/api/fetchLast30HourlyAvgCons",
           { credentials: "include" }
         );
     
@@ -733,38 +966,39 @@ export default function Component() {
   }, []);
 
   useEffect(() => {
-    async function fetchActual() {
-      if (!startdate || !enddate) return;
-  
-      try {
-        const res = await fetch(
-          `http://localhost:4000/api/fetchhcons?startdate=${startdate}&enddate=${enddate}`,
-          { credentials: "include" }
-        );
-  
-        if (!res.ok) {
-          throw new Error(`API failed: ${res.status}`);
-        }
-  
-        const json = await res.json();
-  
-        const hourly = Array(24).fill(0);
-  
-        (json.data || []).forEach((d) => {
-          const hour = parseInt(d.hour.split(":")[0], 10);
-          if (!Number.isNaN(hour)) {
-            hourly[hour] = Number(d.consumption);
-          }
-        });
-  
-        setActualData(hourly);
-      } catch (err) {
-        console.error("Actual fetch failed:", err);
+  if (!rangeConfirmed || !startdate || !enddate) return;
+
+  async function fetchActual() {
+    try {
+      const res = await fetch(
+        `/api/fetchhcons?startdate=${startdate}&enddate=${enddate}`,
+        { credentials: "include" }
+      );
+
+      if (!res.ok) {
+        throw new Error(`API failed: ${res.status}`);
       }
+
+      const json = await res.json();
+      const hourly = Array(24).fill(0);
+
+      (json.data || []).forEach((d) => {
+        const hour = parseInt(d.hour.split(":")[0], 10);
+        if (!Number.isNaN(hour)) {
+          hourly[hour] = Number(d.consumption);
+        }
+      });
+
+      setActualData(hourly);
+    } catch (err) {
+      console.error("Actual fetch failed:", err);
     }
-  
-    fetchActual();
-  }, [startdate, enddate]);
+  }
+
+  fetchActual();
+}, [rangeConfirmed]);
+
+
   
   
   return (
@@ -779,8 +1013,9 @@ export default function Component() {
 
   <div className="leading-tight">
     <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-      M/s Larsen and Turbo Limited
-    </div>
+  {loading ? "Loading..." : user?.short_name || "—"}
+</div>
+
   </div>
 </div>
 
@@ -797,6 +1032,8 @@ export default function Component() {
   endDate={enddate}
   setStartDate={setStartdate}
   setEndDate={setEnddate}
+  rangeConfirmed={rangeConfirmed}
+  setRangeConfirmed={setRangeConfirmed}
   mcData={mcData}
   mcLoading={mcLoading}
   baselineData={baselineData}

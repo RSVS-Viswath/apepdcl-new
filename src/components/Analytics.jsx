@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiDownload } from "react-icons/fi";
 import Chart from "react-apexcharts";
 import { useDate } from "../context/DateContext";
+import ConsumerHeatMap from "./ConsumerHeatMap";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+import { DateRange } from "react-date-range";
+import { format } from "date-fns";
 
 
 const PEAK_COLOR = "#F77B72";
@@ -22,17 +27,31 @@ export default function Analytics() {
   const navigate = useNavigate();
   const [quickRange, setQuickRange] = useState(null); 
   const { startdate, enddate, setStartdate, setEnddate } = useDate();
-  const [weeklyMonth, setWeeklyMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [weeklyMonth, setWeeklyMonth] = useState("2025-12");
+
   const [hourlyData, setHourlyData] = useState([]);
   const [hourlyLoading, setHourlyLoading] = useState(false);
   const [weeklyData, setWeeklyData] = useState([]);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
   const [tariffSplit, setTariffSplit] = useState(null);
   const [tariffLoading, setTariffLoading] = useState(false);
+  const [hourlyRange, setHourlyRange] = useState(null);
+  const [mcaData, setMcaData] = useState(null);
+  const [mcaLoading, setMcaLoading] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
 
+  const selectionRange = {
+  startDate: startdate ? new Date(startdate) : new Date(),
+  endDate: enddate ? new Date(enddate) : new Date(),
+  key: "selection",
+};
+
+const handleDateSelect = (ranges) => {
+  const { startDate, endDate } = ranges.selection;
+  setStartdate(format(startDate, "yyyy-MM-dd"));
+  setEnddate(format(endDate, "yyyy-MM-dd"));
+  setQuickRange(null);
+};
 
 
 
@@ -42,18 +61,23 @@ export default function Analytics() {
   };
 
   const applyQuickRange = (days) => {
-    const end = new Date();
-    const start = new Date();
-  
-    start.setDate(end.getDate() - (days - 1));
-  
-    const format = (d) => d.toISOString().split("T")[0];
-  
-    setStartdate(format(start));
-    setEnddate(format(end));
-  
-    setQuickRange(days === 7 ? "7d" : "30d");
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (days - 1));
+
+  const format = (d) => d.toISOString().split("T")[0];
+
+  const newRange = {
+    start: format(start),
+    end: format(end),
   };
+
+  setHourlyRange(newRange);
+  setQuickRange(days === 7 ? "7d" : "30d");
+
+};
+
+
   
   const hourlyBar = useMemo(() => ({
     series: [
@@ -110,7 +134,7 @@ export default function Analytics() {
         setWeeklyLoading(true);
   
         const res = await fetch(
-          `http://localhost:4000/api/fetchMDaywiseCons?month=${month}&year=${year}`,
+          `/api/fetchMDaywiseCons?month=${month}&year=${year}`,
           { credentials: "include" }
         );
   
@@ -201,42 +225,48 @@ export default function Analytics() {
       colors: ["#4F46E5"],
     },
   }), [weeklyData]);
+
+  const activeHourlyStart = hourlyRange?.start || startdate;
+  const activeHourlyEnd = hourlyRange?.end || enddate;
+
   
 
   useEffect(() => {
-    if (!startdate || !enddate) return;
-  
-    const fetchHourlyConsumption = async () => {
-      try {
-        setHourlyLoading(true);
-  
-        const res = await fetch(
-          `http://localhost:4000/api/fetchhcons?startdate=${startdate}&enddate=${enddate}`,
-          { credentials: "include" }
-        );
-  
-        const json = await res.json();
-  
-        const formatted = json.data.map((d) => {
-          const hourNum = Number(d.hour.split(":")[0]);
-  
-          return {
-            hour: hourNum,
-            kwh: Number(d.consumption),
-            tariff: getTariffByHour(hourNum),
-          };
-        });
-  
-        setHourlyData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch hourly consumption", err);
-      } finally {
-        setHourlyLoading(false);
-      }
-    };
-  
-    fetchHourlyConsumption();
-  }, [startdate, enddate]);
+  if (!activeHourlyStart || !activeHourlyEnd) return;
+
+  const fetchHourlyConsumption = async () => {
+    try {
+      setHourlyLoading(true);
+
+      const res = await fetch(
+        `/api/fetchhcons?startdate=${activeHourlyStart}&enddate=${activeHourlyEnd}`,
+        { credentials: "include" }
+      );
+
+      const json = await res.json();
+
+      const formatted = json.data.map((d) => {
+        const hourNum = Number(d.hour.split(":")[0]);
+
+        return {
+          hour: hourNum,
+          kwh: Number(d.consumption),
+          tariff: getTariffByHour(hourNum),
+        };
+      });
+
+      setHourlyData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch hourly consumption", err);
+    } finally {
+      setHourlyLoading(false);
+    }
+  };
+
+  fetchHourlyConsumption();
+}, [activeHourlyStart, activeHourlyEnd]);
+
+
 
   useEffect(() => {
     if (!startdate || !enddate) return;
@@ -246,7 +276,7 @@ export default function Analytics() {
         setTariffLoading(true);
   
         const res = await fetch(
-          `http://localhost:4000/api/fetchTariffBasedConsumption?startdate=${startdate}&enddate=${enddate}`,
+          `/api/fetchTariffBasedConsumption?startdate=${startdate}&enddate=${enddate}`,
           { credentials: "include" }
         );
   
@@ -271,11 +301,41 @@ export default function Analytics() {
     fetchTariffSplit();
   }, [startdate, enddate]);
   
-  
+ 
+useEffect(() => {
+  if (!startdate || !enddate) return;
+
+  const fetchMCA = async () => {
+    try {
+      setMcaLoading(true);
+
+      const res = await fetch(
+        `/api/fetchMCA?startdate=${startdate}&enddate=${enddate}`,
+        { credentials: "include" }
+      );
+
+      if (!res.ok) {
+        throw new Error(`MCA API failed: ${res.status}`);
+      }
+
+      const json = await res.json();
+
+      setMcaData(json);
+    } catch (err) {
+      console.error("Failed to fetch MCA data", err);
+    } finally {
+      setMcaLoading(false);
+    }
+  };
+
+  fetchMCA();
+}, [startdate, enddate]);
+
+ 
   
 
   return (
-    <div className="h-screen w-full bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen w-full bg-gray-50 flex flex-col overflow-y-auto">
       <div className="flex justify-between items-center p-3">
         <button
           onClick={() => navigate(-1)}
@@ -285,49 +345,85 @@ export default function Analytics() {
         </button>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-600 whitespace-nowrap">
-              Start Date
-            </label>
-            <input
-  type="date"
-  value={startdate}
-  onChange={(e) => {
-    setStartdate(e.target.value);
-    setQuickRange(null);
-  }}
-  className="border rounded px-2 py-1 text-sm"
-/>
 
-          </div>
+  {/* Date Picker Trigger */}
+  <div
+    onClick={() => setDateOpen(true)}
+    className="grid grid-cols-2 gap-2 cursor-pointer"
+  >
+    <div className="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm hover:bg-gray-50 transition">
+      <div className="text-xs text-gray-500">Start Date</div>
+      <div className="font-medium">
+        {startdate}
+      </div>
+    </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-600 whitespace-nowrap">
-              End Date
-            </label>
-            <input
-  type="date"
-  value={enddate}
-  onChange={(e) => {
-    setEnddate(e.target.value);
-    setQuickRange(null);
-  }}
-  className="border rounded px-2 py-1 text-sm"
-/>
+    <div className="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm hover:bg-gray-50 transition">
+      <div className="text-xs text-gray-500">End Date</div>
+      <div className="font-medium">
+        {enddate}
+      </div>
+    </div>
+  </div>
 
-          </div>
+  <button
+    onClick={handleDownload}
+    className="p-2 rounded-md bg-green-500 shadow hover:bg-green-600"
+    title="Download data"
+  >
+    <FiDownload className="text-white" />
+  </button>
+</div>
 
-          <button
-            onClick={handleDownload}
-            className="p-2 rounded-md bg-green-500 shadow hover:bg-green-600 hover:cursor-pointer"
-            title="Download data"
-          >
-            <FiDownload className="text-white" />
-          </button>
-        </div>
+      </div>
+     
+      {dateOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center">
+
+    {/* Backdrop */}
+    <div
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      onClick={() => setDateOpen(false)}
+    />
+
+    {/* Modal */}
+    <div className="relative bg-white rounded-2xl shadow-2xl w-[95%] max-w-4xl p-5 z-10">
+
+      <h3 className="text-lg font-semibold mb-4 text-center">
+        Select Date Range
+      </h3>
+
+      <div className="flex justify-center">
+        <DateRange
+          ranges={[selectionRange]}
+          onChange={handleDateSelect}
+          months={2}
+          direction="horizontal"
+          showSelectionPreview
+          moveRangeOnFirstSelection={false}
+          rangeColors={["#4F46E5"]}
+        />
       </div>
 
-      <div className="flex-1 overflow-hidden px-3 pb-3">
+      <div className="flex justify-end mt-6">
+        <button
+  onClick={() => {
+    setDateOpen(false);
+    setHourlyRange(null); // reset quick range when global date used
+  }}
+  className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+>
+  Apply
+</button>
+
+      </div>
+
+    </div>
+  </div>
+)}
+
+
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
         <div className="bg-white p-3 rounded-lg shadow mb-4">
         <div className="flex justify-between items-center mb-2">
   <h2 className="text-sm font-semibold">
@@ -387,26 +483,34 @@ export default function Analytics() {
           <div className="col-span-12 md:col-span-3 flex flex-col gap-4">
             <div className="bg-white p-3 rounded-lg shadow text-center">
               <p className="text-xs text-gray-500">Power Factor (Min)</p>
-              <p className="text-2xl font-semibold text-red-500">0.82</p>
+              <p className="text-2xl font-semibold text-red-500">
+  0.76
+</p>
+
             </div>
 
             <div className="bg-white p-3 rounded-lg shadow text-center">
               <p className="text-xs text-gray-500">Power Factor (Avg)</p>
-              <p className="text-2xl font-semibold text-green-600">0.94</p>
+              <p className="text-2xl font-semibold text-green-600">0.82</p>
+
             </div>
 
             <div className="bg-white p-3 rounded-lg shadow text-center">
               <p className="text-xs text-gray-500">Contracted Demand</p>
               <p className="text-2xl font-semibold text-blue-600">
-                250 <span className="text-sm font-medium text-gray-400">kVA</span>
-              </p>
+  260
+  <span className="text-sm font-medium text-gray-400"> kVA</span>
+</p>
+
             </div>
 
             <div className="bg-white p-3 rounded-lg shadow text-center">
               <p className="text-xs text-gray-500">Peak Demand</p>
               <p className="text-2xl font-semibold text-orange-500">
-                312 <span className="text-sm font-medium text-gray-400">kVA</span>
-              </p>
+  43.72
+  <span className="text-sm font-medium text-gray-400"> kVA</span>
+</p>
+
             </div>
           </div>
 
@@ -425,7 +529,7 @@ export default function Analytics() {
           <div className="col-span-12 md:col-span-5 bg-white p-3 rounded-lg shadow">
           <div className="flex justify-between items-center mb-2">
   <h2 className="text-sm font-semibold">
-    Weekly Consumption (Mon – Sun)
+    Day-wise Monthly Consumption (Mon – Sun)
   </h2>
 
   <input
@@ -444,6 +548,11 @@ export default function Analytics() {
             />
           </div>
         </div>
+ 
+        <div className="mt-6">
+  <ConsumerHeatMap/>
+</div>
+
       </div>
     </div>
   );

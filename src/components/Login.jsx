@@ -1,16 +1,19 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:4000/api/login", {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -25,7 +28,8 @@ function Login() {
         alert(data.message || "Login failed");
         return;
       }
-
+   
+      await refreshUser();
       navigate("/"); 
     } catch (err) {
       console.error("Login error:", err);

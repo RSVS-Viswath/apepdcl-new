@@ -3,10 +3,10 @@ import { createContext, useContext, useState } from "react";
 const DateContext = createContext(null);
 
 export function DateProvider({ children }) {
-  const today = new Date().toISOString().split("T")[0];
+  const defaultDate = "2025-12-30";
 
-  const [startdate, setStartdate] = useState(today);
-  const [enddate, setEnddate] = useState(today);
+  const [startdate, setStartdate] = useState(defaultDate);
+  const [enddate, setEnddate] = useState(defaultDate);
 
   return (
     <DateContext.Provider

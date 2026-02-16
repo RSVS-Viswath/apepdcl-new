@@ -43,7 +43,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user.id, scno: user.scno },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "1d" }
     );
 
     res.cookie("access_token", token, {
@@ -51,7 +51,7 @@ router.post("/login", async (req, res) => {
       secure: false,       
       sameSite: "strict",
       path: "/",
-      maxAge: 15 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.json({

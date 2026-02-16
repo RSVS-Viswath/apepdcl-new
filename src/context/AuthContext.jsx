@@ -1,37 +1,43 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(null);
-  const [scno, setScno] = useState(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadUser = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/me", {
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedScno = localStorage.getItem("scno");
-
-    if (storedToken) setToken(storedToken);
-    if (storedScno) setScno(storedScno);
+    loadUser();
   }, []);
 
-  const login = ({ token, scno }) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("scno", scno);
-    setToken(token);
-    setScno(scno);
-  };
-
-  const logout = () => {
-    localStorage.clear();
-    setToken(null);
-    setScno(null);
-  };
-
   return (
-    <AuthContext.Provider value={{ token, scno, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, refreshUser: loadUser }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => useContext(AuthContext);
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
