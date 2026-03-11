@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+:root {
+  font-family: sans-serif;
+}
+
 @keyframes soft-blink {
     0%, 100% {
       opacity: 1;

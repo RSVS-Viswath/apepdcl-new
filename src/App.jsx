@@ -1,54 +1,21 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Components from "./components/Components";
-import Login from "./components/Login";
-import Settings from "./components/Settings";
-import { DateProvider } from "./context/DateContext";
-import Analytics from "./components/Analytics";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import DashboardLayout from "./layouts/DashboardLayout";
+import MonitorPage from "./pages/MonitorPage";
+import OverviewPage from "./pages/OverviewPage";
+import StatsPage from "./pages/StatsPage";
 
 function App() {
   return (
-    <BrowserRouter >
-     <AuthProvider>
-      <DateProvider>
+    <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-
-        <Route
-          path="/"
-          element={
-           <ProtectedRoute>
-            <div className="min-h-screen bg-gray-50">
-                <Components />
-              </div>
-           </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/analytics"
-          element={
-          <ProtectedRoute>
-            <Analytics />
-          </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/settings"
-          element={
-          <ProtectedRoute>
-            <>
-                <Components />
-                <Settings />
-              </>
-          </ProtectedRoute>
-          }
-        />
+        <Route element={<DashboardLayout />}>
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/monitor" element={<MonitorPage />} />
+          <Route path="/industrial" element={<Navigate to="/monitor?tab=industrial" replace />} />
+          <Route path="/stats/:serviceNo" element={<StatsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
       </Routes>
-      </DateProvider>
-    </AuthProvider>  
     </BrowserRouter>
   );
 }
