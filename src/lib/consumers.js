@@ -1,4 +1,4 @@
-import { seededInt, seededNumber, seededPick } from "./seeded";
+import { seededInt, seededPick } from "./seeded";
 
 const DISTRICTS = ["VZM", "AKP", "VSP", "ELR", "EDG"];
 
@@ -60,14 +60,14 @@ function buildConsumer(serviceNo, category) {
     .join(" ");
 
   const contractedDemand = seededInt(`${serviceNo}|cd`, isIndustrial ? 120 : 60, isIndustrial ? 520 : 260);
-  const htIncome = Math.round(seededNumber(`${serviceNo}|inc`, isIndustrial ? 12_00_000 : 4_00_000, isIndustrial ? 58_00_000 : 22_00_000));
+  const htIncomerKv = 11;
 
   return {
     serviceNo,
     consumerName: name,
     category,
     contractedDemand,
-    htIncome,
+    htIncomerKv,
   };
 }
 
@@ -92,4 +92,3 @@ export function getAllConsumers() {
 }
 
 export const DISTRICT_OPTIONS = ["All Districts", ...DISTRICTS];
-

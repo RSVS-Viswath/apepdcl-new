@@ -243,6 +243,7 @@ export default function OverviewPage() {
   const seed = `${startKey}|${endKey}|${tab}`;
   const leaderboardSeed = `${startKey}|${endKey}|leaderboard`;
   const categories = useMemo(() => buildDateCategories(startKey, endKey), [startKey, endKey]);
+  const allConsumers = useMemo(() => getAllConsumers(), []);
 
   const stats = useMemo(() => {
     const tabBoost = tab === "All" ? 1 : 0.65;
@@ -253,6 +254,21 @@ export default function OverviewPage() {
       participationRate: Math.round(seededNumber(`${seed}|pr`, 22, 88)),
     };
   }, [seed, tab]);
+
+  const consumerSplitPie = useMemo(() => {
+    const industrialCount = allConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY")).length;
+    const commercialCount = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL")).length;
+    return {
+      series: [industrialCount, commercialCount],
+      options: {
+        chart: { type: "pie", toolbar: { show: false } },
+        labels: ["Industrial", "Commercial"],
+        dataLabels: { enabled: false },
+        legend: { position: "bottom" },
+        colors: [PURPLE, TEAL],
+      },
+    };
+  }, [allConsumers]);
 
   const pie = useMemo(() => {
     const cfg =
@@ -314,9 +330,8 @@ export default function OverviewPage() {
   }, [categories, seed]);
 
   const leaderboards = useMemo(() => {
-    const all = getAllConsumers();
-    const industrial = all.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY"));
-    const commercial = all.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
+    const industrial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY"));
+    const commercial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
 
     const scoreRow = (c) => {
       const totalShifted = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|shifted`, 8, 74);
@@ -339,7 +354,7 @@ export default function OverviewPage() {
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
     return { industrialRows, commercialRows };
-  }, [leaderboardSeed]);
+  }, [allConsumers, leaderboardSeed]);
 
   const onRowClick = (r) => {
     const qs = new URLSearchParams({
@@ -391,8 +406,8 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
-            <div className="text-sm font-semibold mb-2">Peak Analytics: Total vs Shift</div>
-            <Chart options={line.options} series={line.series} type="line" height={240} />
+            <div className="text-sm font-semibold mb-2">Total Consumers: Industrial vs Commercial</div>
+            <Chart options={consumerSplitPie.options} series={consumerSplitPie.series} type="pie" height={240} />
           </div>
 
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
@@ -405,11 +420,9 @@ export default function OverviewPage() {
             <Chart options={bar.options} series={bar.series} type="bar" height={240} />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 flex items-center justify-center min-h-[300px] lg:min-h-[330px]">
-            <div className="text-center">
-              <div className="text-sm font-semibold text-gray-900">Allocated for future graphs</div>
-              <div className="text-xs text-gray-500 mt-1">Yet to decide what to place here</div>
-            </div>
+          <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
+            <div className="text-sm font-semibold mb-2">Peak Analytics: Total vs Shift</div>
+            <Chart options={line.options} series={line.series} type="line" height={240} />
           </div>
         </div>
 

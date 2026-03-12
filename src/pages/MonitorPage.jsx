@@ -145,7 +145,7 @@ export default function MonitorPage() {
               <th className="py-3 px-3">Consumer Name</th>
               <th className="py-3 px-3">Category</th>
               <th className="py-3 px-3 text-right">Contracted Demand</th>
-              <th className="py-3 px-3 text-right">HT Income</th>
+              <th className="py-3 px-3 text-right">HT Incomer</th>
             </tr>
           </thead>
           <tbody>
@@ -160,7 +160,7 @@ export default function MonitorPage() {
                 <td className="py-3 px-3">{r.consumerName}</td>
                 <td className="py-3 px-3">{r.category}</td>
                 <td className="py-3 px-3 text-right tabular-nums">{r.contractedDemand}</td>
-                <td className="py-3 px-3 text-right tabular-nums">₹ {r.htIncome.toLocaleString()}</td>
+                <td className="py-3 px-3 text-right tabular-nums">{r.htIncomerKv} kV</td>
               </tr>
             ))}
             {visible.length === 0 ? (

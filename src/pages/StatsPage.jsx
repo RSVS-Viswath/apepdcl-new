@@ -191,7 +191,8 @@ export default function StatsPage() {
   const fallback = consumers.find((c) => c.serviceNo === serviceNo);
 
   const consumerName = searchParams.get("consumerName") || fallback?.consumerName || "Consumer";
-  const category = searchParams.get("category") || fallback?.category || "—";
+  const category = searchParams.get("category") || fallback?.category || "--";
+  const htIncomerKv = fallback?.htIncomerKv ?? 11;
   const position = useMemo(() => seededInt(`${serviceNo}|position`, 1, 50), [serviceNo]);
   const isCommercial = useMemo(() => String(category).toUpperCase().includes("COMMERCIAL"), [category]);
   const peakWindow = useMemo(
@@ -382,6 +383,7 @@ export default function StatsPage() {
             <div className="sm:text-right">
               <div className="text-xs text-gray-500">Tariff / Category</div>
               <div className="text-sm font-semibold truncate">{category}</div>
+              <div className="text-xs text-gray-500 tabular-nums">HT Incomer: {htIncomerKv} kV</div>
               <div className="text-xs text-gray-500 tabular-nums">Selected Day: {selectedDayKey}</div>
             </div>
           </div>
@@ -391,7 +393,7 @@ export default function StatsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
               label="Total Cost Saved"
-              value={`₹ ${stats.totalCostSaved.toLocaleString()}`}
+              value={`Rs. ${stats.totalCostSaved.toLocaleString()}`}
               icon={<FiDollarSign className="text-lg" />}
             />
             <StatCard
@@ -401,15 +403,15 @@ export default function StatsPage() {
             />
             <StatCard
               label="Morning Peak Hour"
-              value={isCommercial ? "—" : `${stats.morningHour}:00`}
-              hint={isCommercial ? "Commercial: evening-only" : `₹ ${stats.morningCost.toLocaleString()} • ${stats.morningUnits} kWh`}
+              value={isCommercial ? "--" : `${stats.morningHour}:00`}
+              hint={isCommercial ? "Commercial: evening-only" : `Rs. ${stats.morningCost.toLocaleString()} | ${stats.morningUnits} kWh`}
               icon={<FiSun className="text-lg" />}
               muted={isCommercial}
             />
             <StatCard
               label="Evening Peak Hour"
               value={`${stats.eveningHour}:00`}
-              hint={`₹ ${stats.eveningCost.toLocaleString()} • ${stats.eveningUnits} kWh`}
+              hint={`Rs. ${stats.eveningCost.toLocaleString()} | ${stats.eveningUnits} kWh`}
               icon={<FiMoon className="text-lg" />}
             />
           </div>
@@ -448,7 +450,7 @@ export default function StatsPage() {
 
           {dayUpdating ? (
             <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-              <div className="text-sm font-medium text-gray-700">Updating…</div>
+              <div className="text-sm font-medium text-gray-700">Updating...</div>
             </div>
           ) : null}
         </div>
@@ -503,7 +505,7 @@ export default function StatsPage() {
               </tbody>
             </table>
           </div>
-          <div className="text-xs text-gray-500 mt-2 shrink-0">Click a row to load that day’s stats.</div>
+          <div className="text-xs text-gray-500 mt-2 shrink-0">Click a row to load that day's stats.</div>
         </div>
       </div>
     </div>
