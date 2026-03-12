@@ -1,20 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
-
-function TabButton({ active, children, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-3 py-2 rounded-md text-sm font-medium ${
-        active ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function Pagination({ activePage, onChange }) {
   const pages = [1, 2, 3, 4, 5];
@@ -49,12 +35,14 @@ function Pagination({ activePage, onChange }) {
 
 export default function MonitorPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const selectedTab = searchParams.get("tab") === "industrial" ? "industrial" : "commercial";
+  const recordsRef = useRef(null);
 
   const [serviceSearch, setServiceSearch] = useState("");
   const [district, setDistrict] = useState("All Districts");
   const [activePage, setActivePage] = useState(1);
+  const [isRecordsScrolled, setIsRecordsScrolled] = useState(false);
 
   const all = useMemo(() => getAllConsumers(), []);
 
@@ -77,14 +65,6 @@ export default function MonitorPage() {
     return districtFiltered;
   }, [all, district, selectedTab, serviceSearch]);
 
-  const setTab = (tab) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("tab", tab);
-      return next;
-    });
-  };
-
   const onRowClick = (r) => {
     const qs = new URLSearchParams({
       consumerName: r.consumerName,
@@ -93,50 +73,62 @@ export default function MonitorPage() {
     navigate(`/stats/${encodeURIComponent(r.serviceNo)}?${qs.toString()}`);
   };
 
+  useEffect(() => {
+    const node = recordsRef.current;
+    if (!node) return undefined;
+
+    const onScroll = () => {
+      setIsRecordsScrolled(node.scrollTop > 4);
+    };
+
+    onScroll();
+    node.addEventListener("scroll", onScroll, { passive: true });
+    return () => node.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <div className="space-y-4">
-      <div className="flex bg-white rounded-lg shadow p-1 w-fit">
-        <TabButton active={selectedTab === "commercial"} onClick={() => setTab("commercial")}>
-          Commercial
-        </TabButton>
-        <TabButton active={selectedTab === "industrial"} onClick={() => setTab("industrial")}>
-          Industrial
-        </TabButton>
-      </div>
+    <div className="space-y-0">
+      <div
+        className={`sticky top-[66px] z-20 w-full rounded-t-2xl px-4 py-2.5 transition-all duration-200 ${
+          isRecordsScrolled
+            ? "bg-white/72 backdrop-blur-xl shadow-lg shadow-slate-200/70 supports-[backdrop-filter]:bg-white/58"
+            : "bg-white shadow"
+        }`}
+      >
+        <div className="flex flex-col lg:flex-row gap-2 lg:items-end lg:justify-between">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+            <label className="grid gap-0">
+              <span className="text-[11px] text-gray-500">Search by Service No</span>
+              <input
+                value={serviceSearch}
+                onChange={(e) => setServiceSearch(e.target.value)}
+                placeholder="e.g. AKP010"
+                className="border rounded-lg px-3 py-1.5 text-sm w-full sm:w-64"
+                type="text"
+              />
+            </label>
 
-      <div className="bg-white rounded-lg shadow p-3 flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <label className="grid gap-1">
-            <span className="text-xs text-gray-500">Search by Service No</span>
-            <input
-              value={serviceSearch}
-              onChange={(e) => setServiceSearch(e.target.value)}
-              placeholder="e.g. AKP010"
-              className="border rounded-lg px-3 py-2 text-sm w-full sm:w-64"
-              type="text"
-            />
-          </label>
+            <label className="grid gap-0">
+              <span className="text-[11px] text-gray-500">District</span>
+              <select
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                className="border rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 bg-white"
+              >
+                {DISTRICT_OPTIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-          <label className="grid gap-1">
-            <span className="text-xs text-gray-500">District</span>
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm w-full sm:w-48 bg-white"
-            >
-              {DISTRICT_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Pagination activePage={activePage} onChange={setActivePage} />
         </div>
-
-        <Pagination activePage={activePage} onChange={setActivePage} />
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-auto">
+      <div ref={recordsRef} className="rounded-b-2xl bg-white shadow overflow-auto max-h-[calc(100vh-170px)]">
         <table className="min-w-full text-sm">
           <thead className="text-xs text-gray-500 bg-gray-50">
             <tr className="text-left">
@@ -152,11 +144,11 @@ export default function MonitorPage() {
             {visible.map((r, idx) => (
               <tr
                 key={r.serviceNo}
-                className="border-t hover:bg-gray-50 cursor-pointer"
+                className="group border-t cursor-pointer transition-all duration-150 hover:-translate-y-0.5 hover:bg-indigo-50 hover:text-indigo-700 hover:shadow-[0_8px_18px_rgba(79,70,229,0.10)]"
                 onClick={() => onRowClick(r)}
               >
                 <td className="py-3 px-3 tabular-nums">{idx + 1}</td>
-                <td className="py-3 px-3 font-medium">{r.serviceNo}</td>
+                <td className="py-3 px-3 font-medium text-indigo-700 group-hover:text-indigo-700">{r.serviceNo}</td>
                 <td className="py-3 px-3">{r.consumerName}</td>
                 <td className="py-3 px-3">{r.category}</td>
                 <td className="py-3 px-3 text-right tabular-nums">{r.contractedDemand}</td>

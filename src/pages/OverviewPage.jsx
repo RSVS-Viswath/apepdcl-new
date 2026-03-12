@@ -180,16 +180,13 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="text-sm font-semibold">{title}</div>
       </div>
-      <div className="overflow-y-auto overflow-x-auto flex-1 min-h-0 bg-gray-50 rounded-lg p-1">
-        <table className="min-w-[640px] w-full text-xs border border-gray-200 border-collapse bg-white table-fixed">
+      <div className="overflow-y-auto flex-1 min-h-0 bg-gray-50 rounded-lg p-1">
+        <table className="w-full text-xs border border-gray-200 border-collapse bg-white">
           <thead className="text-gray-600 bg-[#f6f3ff]">
             <tr className="text-left">
               <th className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200 w-[84px]">Position</th>
               <th className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200 w-[110px]">Service No.</th>
-              <th className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200 w-[200px]">Consumer name</th>
-              <th className="py-2 px-2 text-right whitespace-nowrap font-medium border border-gray-200 w-[120px]">
-                Total shifted
-              </th>
+              <th className="py-2 px-2 font-medium border border-gray-200">Consumer name</th>
               <th className="py-2 px-2 text-right whitespace-nowrap font-medium border border-gray-200 w-[90px]">Score</th>
             </tr>
           </thead>
@@ -207,11 +204,10 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
                 </td>
                 <td className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200">{r.serviceNo}</td>
                 <td className="py-2 px-2 border border-gray-200">
-                  <div className="truncate whitespace-nowrap" title={r.consumerName}>
+                  <div className="break-words" title={r.consumerName}>
                     {r.consumerName}
                   </div>
                 </td>
-                <td className="py-2 px-2 text-right tabular-nums whitespace-nowrap border border-gray-200">{r.totalShifted}</td>
                 <td className="py-2 px-2 text-right tabular-nums whitespace-nowrap font-semibold text-[#6A42B2] border border-gray-200">
                   {r.score}
                 </td>
@@ -334,11 +330,9 @@ export default function OverviewPage() {
     const commercial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
 
     const scoreRow = (c) => {
-      const totalShifted = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|shifted`, 8, 74);
       const score = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|score`, 540, 690);
       return {
         ...c,
-        totalShifted: `${totalShifted.toFixed(1)} MWh`,
         score: score.toFixed(1),
       };
     };

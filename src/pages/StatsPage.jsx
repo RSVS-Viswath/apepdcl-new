@@ -16,9 +16,9 @@ const RED = "#ef4444";
 
 function DateBox({ label, value }) {
   return (
-    <div className="border border-gray-300 rounded-xl px-5 h-14 bg-gray-50 shadow-sm flex items-center justify-center">
-      <div className="flex items-center gap-3">
-        <div className="text-xs font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
+    <div className="border border-gray-300 rounded-xl px-4 h-12 bg-gray-50 shadow-sm flex items-center justify-center">
+      <div className="flex items-center gap-2.5">
+        <div className="text-[11px] font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
           {label} :
         </div>
         <div className="text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{value}</div>
@@ -64,7 +64,7 @@ function StatsDateRangePicker({ startKey, endKey, onApply }) {
           setDraft(selectionRange);
           setOpen(true);
         }}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full xl:w-auto cursor-pointer select-none"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full xl:w-auto cursor-pointer select-none"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -123,20 +123,20 @@ function StatsDateRangePicker({ startKey, endKey, onApply }) {
 
 function StatCard({ label, value, hint, icon, muted = false }) {
   return (
-    <div className="bg-white rounded-lg shadow px-4 py-3 h-[78px] flex items-center gap-3">
+    <div className="bg-white rounded-lg shadow px-3 py-2 h-[70px] flex items-center gap-2.5">
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
           muted ? "bg-gray-100 text-gray-500" : "bg-indigo-50 text-indigo-700"
         }`}
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] text-gray-500 leading-tight truncate">{label}</div>
-        <div className={`text-base font-semibold mt-1 tabular-nums leading-tight truncate ${muted ? "text-gray-500" : ""}`}>
+        <div className="text-[12px] text-gray-500 leading-tight truncate">{label}</div>
+        <div className={`text-[15px] font-semibold mt-0.5 tabular-nums leading-tight truncate ${muted ? "text-gray-500" : ""}`}>
           {value}
         </div>
-        {hint ? <div className="text-[11.5px] text-gray-400 leading-tight truncate">{hint}</div> : null}
+        {hint ? <div className="text-[11px] text-gray-400 leading-tight truncate">{hint}</div> : null}
       </div>
     </div>
   );
@@ -224,8 +224,8 @@ export default function StatsPage() {
 
       const headerHeight = document.querySelector("header")?.offsetHeight || 0;
       const topHeight = topSectionRef.current?.offsetHeight || 0;
-      const mainPadding = 32; // DashboardLayout: py-4
-      const gap = 16; // StatsPage: gap-4 between top and bottom sections
+      const mainPadding = 24; // StatsPage slightly offsets DashboardLayout padding usage
+      const gap = 8; // StatsPage: gap-2 between top and bottom sections
 
       const available = Math.floor(window.innerHeight - headerHeight - mainPadding - topHeight - gap);
       setBottomHeight(Math.max(260, available));
@@ -365,32 +365,32 @@ export default function StatsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div ref={topSectionRef} className="flex flex-col gap-4">
-        <div ref={topRef} className="bg-white rounded-lg shadow p-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+    <div className="flex flex-col gap-2 -mt-1">
+      <div ref={topSectionRef} className="flex flex-col gap-2">
+        <div ref={topRef} className="bg-white rounded-lg shadow px-4 py-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
             <div className="min-w-0">
-              <div className="text-xs text-gray-500">Welcome</div>
+              <div className="text-[11px] text-gray-500">Welcome</div>
               <div className="flex items-center gap-2 min-w-0">
-                <div className="text-sm font-semibold truncate">{consumerName}</div>
+                <div className="text-[15px] font-semibold truncate">{consumerName}</div>
                 <div className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-semibold">
                   <FiAward className="text-[13px]" />
                   #{position}
                 </div>
               </div>
-              <div className="text-xs text-gray-500 truncate">{serviceNo}</div>
+              <div className="text-[12px] text-gray-500 truncate">{serviceNo}</div>
             </div>
             <div className="sm:text-right">
-              <div className="text-xs text-gray-500">Tariff / Category</div>
-              <div className="text-sm font-semibold truncate">{category}</div>
-              <div className="text-xs text-gray-500 tabular-nums">HT Incomer: {htIncomerKv} kV</div>
-              <div className="text-xs text-gray-500 tabular-nums">Selected Day: {selectedDayKey}</div>
+              <div className="text-[11px] text-gray-500">Tariff / Category</div>
+              <div className="text-[15px] font-semibold truncate">{category}</div>
+              <div className="text-[12px] text-gray-500 tabular-nums">HT Incomer: {htIncomerKv} kV</div>
+              <div className="text-[12px] text-gray-500 tabular-nums">Selected Day: {selectedDayKey}</div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-3 items-start">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-2 items-start">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <StatCard
               label="Total Cost Saved"
               value={`Rs. ${stats.totalCostSaved.toLocaleString()}`}
@@ -429,11 +429,11 @@ export default function StatsPage() {
       </div>
 
       <div
-        className="grid grid-cols-1 lg:grid-cols-[2.25fr_0.75fr] gap-4 items-stretch"
+        className="grid grid-cols-1 lg:grid-cols-[2.25fr_0.75fr] gap-2 items-stretch"
         style={bottomHeight ? { height: bottomHeight } : undefined}
       >
-        <div className="bg-white rounded-lg shadow p-3 relative flex flex-col min-h-0 min-w-0">
-          <div className="flex items-center justify-between mb-2 shrink-0">
+        <div className="bg-white rounded-lg shadow px-2.5 py-2 relative flex flex-col min-h-0 min-w-0">
+          <div className="flex items-center justify-between mb-1 shrink-0">
             <div className="text-sm font-semibold">Hourly Consumption Pattern</div>
             <div className="text-xs text-gray-500 tabular-nums">{selectedDayKey}</div>
           </div>
@@ -455,33 +455,33 @@ export default function StatsPage() {
           ) : null}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-3 flex flex-col min-h-0 min-w-0">
-          <div className="text-2xl font-semibold text-center py-1 mb-1 shrink-0">Shift History</div>
-          <div className="overflow-auto flex-1 min-h-0 bg-gray-50 rounded-lg p-1">
-            <table className="min-w-[720px] w-full text-[13.5px] border border-gray-200 border-collapse bg-white">
+        <div className="bg-white rounded-lg shadow p-2 flex flex-col min-h-0 min-w-0">
+          <div className="text-lg font-semibold text-center py-0.5 mb-0.5 shrink-0">Shift History</div>
+          <div className="overflow-auto flex-1 min-h-0 bg-gray-50 rounded-lg">
+            <table className="min-w-[720px] w-full text-[13px] border border-gray-200 border-collapse bg-white">
               <thead className="text-gray-600 bg-[#f6f3ff]">
                 <tr className="text-left">
-                  <th rowSpan={2} className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200">
+                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
                     Date
                   </th>
-                  <th rowSpan={2} className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200">
+                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
                     Time
                   </th>
-                  <th colSpan={2} className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
+                  <th colSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
                     Percentage (%)
                   </th>
-                  <th colSpan={2} className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
+                  <th colSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
                     Value (kWh)
                   </th>
-                  <th rowSpan={2} className="py-2 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
+                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
                     Points
                   </th>
                 </tr>
                 <tr className="text-left">
-                  <th className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
-                  <th className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
-                  <th className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
-                  <th className="py-2 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
                 </tr>
               </thead>
               <tbody className="tabular-nums">
@@ -491,13 +491,13 @@ export default function StatsPage() {
                     onClick={() => onDayClick(r.dayKey)}
                     className={`cursor-pointer hover:bg-gray-50 ${r.dayKey === selectedDayKey ? "bg-indigo-50" : "bg-white"}`}
                   >
-                    <td className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200">{r.dayKey}</td>
-                    <td className="py-2 px-2 whitespace-nowrap border border-gray-200">{r.timeLabel}</td>
-                    <td className="py-2 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentRecorded}%</td>
-                    <td className="py-2 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentShifted}%</td>
-                    <td className="py-2 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueRecorded}</td>
-                    <td className="py-2 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueShifted}</td>
-                    <td className="py-2 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">
+                    <td className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">{r.dayKey}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap border border-gray-200">{r.timeLabel}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentRecorded}%</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentShifted}%</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueRecorded}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueShifted}</td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">
                       {r.points}
                     </td>
                   </tr>
@@ -505,7 +505,7 @@ export default function StatsPage() {
               </tbody>
             </table>
           </div>
-          <div className="text-xs text-gray-500 mt-2 shrink-0">Click a row to load that day's stats.</div>
+          <div className="text-xs text-gray-500 mt-1 shrink-0">Click a row to load that day's stats.</div>
         </div>
       </div>
     </div>
