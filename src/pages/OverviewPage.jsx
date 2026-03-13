@@ -8,14 +8,11 @@ import { defaultOverviewRange, fromDateKey, toDateKey } from "../lib/dateKey";
 import { getAllConsumers } from "../lib/consumers";
 import { useNavigate } from "react-router-dom";
 import { FiActivity, FiPercent, FiTrendingUp, FiUsers } from "react-icons/fi";
+import { FaTrophy } from "react-icons/fa";
 
 // Match legacy client theme graph palette
 const TEAL = "#13C4A9";
 const PURPLE = "#6A42B2";
-const TOD_PEAK_1 = "#F96B6C";
-const TOD_PEAK_2 = "#4F8FE9";
-const TOD_NORMAL = "#F2CF3A";
-const TOD_OFF_PEAK = "#69C16F";
 
 function tint(hex, amount01) {
   const h = hex.replace("#", "");
@@ -248,6 +245,14 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
     <div className={`bg-white rounded-lg shadow p-2.5 flex flex-col min-h-0 ${className || ""}`}>
       <div className="flex items-center justify-between mb-1.5 shrink-0">
         <div className="text-sm font-semibold">{title}</div>
+        <button
+          type="button"
+          onClick={onViewMore}
+          aria-label="View more"
+          className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm hover:bg-indigo-700 transition"
+        >
+          <FaTrophy className="text-[18px]" />
+        </button>
       </div>
       <div className="flex-1 min-h-0 bg-gray-50 rounded-lg p-1.5 space-y-1.5 overflow-hidden">
         {rows.map((r) => (
@@ -271,15 +276,6 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
             </div>
           </button>
         ))}
-      </div>
-      <div className="pt-1.5 shrink-0 flex items-center justify-center">
-        <button
-          type="button"
-          onClick={onViewMore}
-          className="px-3 py-1 text-xs font-medium rounded-md border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
-        >
-          View More
-        </button>
       </div>
     </div>
   );
@@ -343,7 +339,31 @@ export default function OverviewPage() {
     };
   }, [seed, tab]);
 
+  const todColors = useMemo(
+    () => ({
+      peak1: PURPLE,
+      peak2: tint(PURPLE, 0.28),
+      normal: TEAL,
+      offPeak: tint(TEAL, 0.34),
+    }),
+    []
+  );
+
   const todPie = useMemo(() => {
+    if (tab === "All") {
+      const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
+      return {
+        series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 12, 46)),
+        options: {
+          chart: { type: "pie", toolbar: { show: false } },
+          labels,
+          dataLabels: { enabled: false },
+          legend: { position: "bottom" },
+          colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
+        },
+      };
+    }
+
     if (tab === "Industrial") {
       const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
       return {
@@ -352,8 +372,8 @@ export default function OverviewPage() {
           chart: { type: "pie", toolbar: { show: false } },
           labels,
           dataLabels: { enabled: false },
-          legend: { position: "right" },
-          colors: [TOD_PEAK_1, TOD_PEAK_2, TOD_NORMAL, TOD_OFF_PEAK],
+          legend: { position: "bottom" },
+          colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
         },
       };
     }
@@ -365,11 +385,11 @@ export default function OverviewPage() {
         chart: { type: "pie", toolbar: { show: false } },
         labels,
         dataLabels: { enabled: false },
-        legend: { position: "right" },
-        colors: [TOD_PEAK_1, TOD_NORMAL],
+        legend: { position: "bottom" },
+        colors: [todColors.peak1, todColors.normal],
       },
     };
-  }, [seed, tab]);
+  }, [seed, tab, todColors]);
 
   const line = useMemo(() => {
     const withResponse = categories.map((k, i) => seededInt(`${seed}|line|wr|${k}|${i}`, 62, 118));
@@ -500,8 +520,8 @@ export default function OverviewPage() {
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
             {tab === "All" ? (
               <>
-                <div className="text-sm font-semibold mb-2">Types of Consumers</div>
-                <Chart options={pie.options} series={pie.series} type="pie" height={240} />
+                <div className="text-sm font-semibold mb-2">Total Consumption - TOD</div>
+                <Chart options={todPie.options} series={todPie.series} type="pie" height={240} />
               </>
             ) : (
               <>
@@ -524,14 +544,14 @@ export default function OverviewPage() {
 
         <div className="flex flex-col gap-4 min-h-0">
           <LeaderboardTable
-            className="lg:h-[300px]"
+            className="lg:h-[330px]"
             title="Industrial Consumer Leaderboard"
             rows={leaderboards.industrialRows}
             onRowClick={onRowClick}
             onViewMore={() => navigate("/monitor?tab=industrial")}
           />
           <LeaderboardTable
-            className="lg:h-[300px]"
+            className="lg:h-[330px]"
             title="Commercial Consumer Leaderboard"
             rows={leaderboards.commercialRows}
             onRowClick={onRowClick}

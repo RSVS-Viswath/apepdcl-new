@@ -16,7 +16,7 @@ const RED = "#ef4444";
 
 function DateBox({ label, value }) {
   return (
-    <div className="border border-gray-300 rounded-xl px-4 h-12 bg-gray-50 shadow-sm flex items-center justify-center">
+    <div className="border border-gray-300 rounded-xl px-4 h-14 bg-gray-50 shadow-sm flex items-center justify-center">
       <div className="flex items-center gap-2.5">
         <div className="text-[11px] font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
           {label} :
@@ -123,9 +123,9 @@ function StatsDateRangePicker({ startKey, endKey, onApply }) {
 
 function StatCard({ label, value, hint, icon, muted = false }) {
   return (
-    <div className="bg-white rounded-lg shadow px-3 py-2 h-[70px] flex items-center gap-2.5">
+    <div className="bg-white rounded-lg shadow px-3 py-2 h-14 flex items-center gap-2.5">
       <div
-        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
           muted ? "bg-gray-100 text-gray-500" : "bg-indigo-50 text-indigo-700"
         }`}
       >
@@ -133,7 +133,7 @@ function StatCard({ label, value, hint, icon, muted = false }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[12px] text-gray-500 leading-tight truncate">{label}</div>
-        <div className={`text-[15px] font-semibold mt-0.5 tabular-nums leading-tight truncate ${muted ? "text-gray-500" : ""}`}>
+        <div className={`text-[14px] font-semibold mt-0.5 tabular-nums leading-tight truncate ${muted ? "text-gray-500" : ""}`}>
           {value}
         </div>
         {hint ? <div className="text-[11px] text-gray-400 leading-tight truncate">{hint}</div> : null}
@@ -432,7 +432,7 @@ export default function StatsPage() {
         className="grid grid-cols-1 lg:grid-cols-[2.25fr_0.75fr] gap-2 items-stretch"
         style={bottomHeight ? { height: bottomHeight } : undefined}
       >
-        <div className="bg-white rounded-lg shadow px-2.5 py-2 relative flex flex-col min-h-0 min-w-0">
+        <div className="bg-white rounded-lg shadow p-2 relative flex flex-col min-h-0 min-w-0">
           <div className="flex items-center justify-between mb-1 shrink-0">
             <div className="text-sm font-semibold">Hourly Consumption Pattern</div>
             <div className="text-xs text-gray-500 tabular-nums">{selectedDayKey}</div>
