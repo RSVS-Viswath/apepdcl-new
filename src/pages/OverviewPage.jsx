@@ -12,6 +12,10 @@ import { FiActivity, FiPercent, FiTrendingUp, FiUsers } from "react-icons/fi";
 // Match legacy client theme graph palette
 const TEAL = "#13C4A9";
 const PURPLE = "#6A42B2";
+const TOD_PEAK_1 = "#F96B6C";
+const TOD_PEAK_2 = "#4F8FE9";
+const TOD_NORMAL = "#F2CF3A";
+const TOD_OFF_PEAK = "#69C16F";
 
 function tint(hex, amount01) {
   const h = hex.replace("#", "");
@@ -174,49 +178,101 @@ function DateRangePicker({ startKey, endKey, onApply }) {
   );
 }
 
-function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
+function MedalBadge({ position }) {
+  const variants = {
+    1: {
+      ribbonLeft: "#A81516",
+      ribbonRight: "#4B1112",
+      medalOuter: "#C97F18",
+      medalInner: "#F4C542",
+      accent: "#8F4D05",
+    },
+    2: {
+      ribbonLeft: "#6AA6E8",
+      ribbonRight: "#415A73",
+      medalOuter: "#7B8794",
+      medalInner: "#D9E0E8",
+      accent: "#4D5762",
+    },
+    3: {
+      ribbonLeft: "#2D9E44",
+      ribbonRight: "#196B2D",
+      medalOuter: "#8D4F25",
+      medalInner: "#D8843C",
+      accent: "#5F3114",
+    },
+  };
+
+  const palette = variants[position];
+  if (!palette) return null;
+
   return (
-    <div className={`bg-white rounded-lg shadow p-3 flex flex-col min-h-0 ${className || ""}`}>
-      <div className="flex items-center justify-between mb-2 shrink-0">
+    <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" aria-hidden="true">
+      <path d="M6 2h4l2 6H9L6 2Z" fill={palette.ribbonLeft} />
+      <path d="M14 2h4l-3 6h-3l2-6Z" fill={palette.ribbonRight} />
+      <circle cx="12" cy="15" r="6.2" fill={palette.medalOuter} />
+      <circle cx="12" cy="15" r="4.4" fill={palette.medalInner} />
+      <circle cx="12" cy="15" r="2.1" fill={palette.accent} opacity="0.16" />
+      <text
+        x="12"
+        y="16.3"
+        textAnchor="middle"
+        fontSize="6"
+        fontWeight="700"
+        fill="#fff7d6"
+        style={{ paintOrder: "stroke", stroke: palette.accent, strokeWidth: "0.8px" }}
+      >
+        {position}
+      </text>
+    </svg>
+  );
+}
+
+function RankBadge({ position }) {
+  if (position <= 3) return <MedalBadge position={position} />;
+
+  return (
+    <div className="w-6 h-6 shrink-0 rounded-full bg-[#f1ecff] text-[#6A42B2] flex items-center justify-center text-[11px] font-semibold">
+      {position}
+    </div>
+  );
+}
+
+function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
+  const rowTone = (position) => {
+    if (position <= 3) return "bg-[#f5f1df]";
+    return "bg-white";
+  };
+
+  return (
+    <div className={`bg-white rounded-lg shadow p-2.5 flex flex-col min-h-0 ${className || ""}`}>
+      <div className="flex items-center justify-between mb-1.5 shrink-0">
         <div className="text-sm font-semibold">{title}</div>
       </div>
-      <div className="overflow-y-auto flex-1 min-h-0 bg-gray-50 rounded-lg p-1">
-        <table className="w-full text-xs border border-gray-200 border-collapse bg-white">
-          <thead className="text-gray-600 bg-[#f6f3ff]">
-            <tr className="text-left">
-              <th className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200 w-[84px]">Position</th>
-              <th className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200 w-[110px]">Service No.</th>
-              <th className="py-2 px-2 font-medium border border-gray-200">Consumer name</th>
-              <th className="py-2 px-2 text-right whitespace-nowrap font-medium border border-gray-200 w-[90px]">Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr
-                key={r.serviceNo}
-                className="bg-white hover:bg-gray-50 cursor-pointer"
-                onClick={() => onRowClick(r)}
-              >
-                <td className="py-2 px-2 whitespace-nowrap border border-gray-200">
-                  <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-[#f6f3ff] text-[#6A42B2] border border-[#e7dcff] text-[11px] font-semibold tabular-nums">
-                    #{r.position}
-                  </span>
-                </td>
-                <td className="py-2 px-2 whitespace-nowrap font-medium border border-gray-200">{r.serviceNo}</td>
-                <td className="py-2 px-2 border border-gray-200">
-                  <div className="break-words" title={r.consumerName}>
-                    {r.consumerName}
-                  </div>
-                </td>
-                <td className="py-2 px-2 text-right tabular-nums whitespace-nowrap font-semibold text-[#6A42B2] border border-gray-200">
-                  {r.score}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex-1 min-h-0 bg-gray-50 rounded-lg p-1.5 space-y-1.5 overflow-hidden">
+        {rows.map((r) => (
+          <button
+            key={r.serviceNo}
+            type="button"
+            onClick={() => onRowClick(r)}
+            className={`w-full text-left rounded-xl px-2.5 py-2 flex items-center gap-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${rowTone(
+              r.position
+            )}`}
+          >
+            <RankBadge position={r.position} />
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <div className="font-semibold text-[15px] text-gray-900 tabular-nums whitespace-nowrap">{r.serviceNo}</div>
+              <div className="min-w-0 text-[12px] text-gray-600 truncate" title={r.consumerName}>
+                {r.consumerName}
+              </div>
+            </div>
+            <div className="text-[18px] leading-none font-semibold text-[#7A17CC] tabular-nums whitespace-nowrap">
+              {r.score}
+            </div>
+          </button>
+        ))}
       </div>
-      <div className="pt-2 shrink-0 flex items-center justify-center">
+      <div className="pt-1.5 shrink-0 flex items-center justify-center">
         <button
           type="button"
           onClick={onViewMore}
@@ -287,6 +343,34 @@ export default function OverviewPage() {
     };
   }, [seed, tab]);
 
+  const todPie = useMemo(() => {
+    if (tab === "Industrial") {
+      const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
+      return {
+        series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 12, 46)),
+        options: {
+          chart: { type: "pie", toolbar: { show: false } },
+          labels,
+          dataLabels: { enabled: false },
+          legend: { position: "right" },
+          colors: [TOD_PEAK_1, TOD_PEAK_2, TOD_NORMAL, TOD_OFF_PEAK],
+        },
+      };
+    }
+
+    const labels = ["Peak", "Normal"];
+    return {
+      series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 22, 64)),
+      options: {
+        chart: { type: "pie", toolbar: { show: false } },
+        labels,
+        dataLabels: { enabled: false },
+        legend: { position: "right" },
+        colors: [TOD_PEAK_1, TOD_NORMAL],
+      },
+    };
+  }, [seed, tab]);
+
   const line = useMemo(() => {
     const withResponse = categories.map((k, i) => seededInt(`${seed}|line|wr|${k}|${i}`, 62, 118));
     const withoutResponse = categories.map((k, i) => seededInt(`${seed}|line|wor|${k}|${i}`, 72, 132));
@@ -330,20 +414,20 @@ export default function OverviewPage() {
     const commercial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
 
     const scoreRow = (c) => {
-      const score = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|score`, 540, 690);
+      const score = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|score`, 2.1, 29.8);
       return {
         ...c,
-        score: score.toFixed(1),
+        score: `${score.toFixed(1)}%`,
       };
     };
 
     const industrialRows = seededShuffle(`${leaderboardSeed}|lb|ind`, industrial.map(scoreRow))
-      .sort((a, b) => Number(b.score) - Number(a.score))
+      .sort((a, b) => Number.parseFloat(b.score) - Number.parseFloat(a.score))
       .slice(0, 5)
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
     const commercialRows = seededShuffle(`${leaderboardSeed}|lb|com`, commercial.map(scoreRow))
-      .sort((a, b) => Number(b.score) - Number(a.score))
+      .sort((a, b) => Number.parseFloat(b.score) - Number.parseFloat(a.score))
       .slice(0, 5)
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
@@ -400,13 +484,31 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
-            <div className="text-sm font-semibold mb-2">Total Consumers: Industrial vs Commercial</div>
-            <Chart options={consumerSplitPie.options} series={consumerSplitPie.series} type="pie" height={240} />
+            {tab === "All" ? (
+              <>
+                <div className="text-sm font-semibold mb-2">Total Consumers: Industrial vs Commercial</div>
+                <Chart options={consumerSplitPie.options} series={consumerSplitPie.series} type="pie" height={240} />
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-semibold mb-2">Types of Consumers</div>
+                <Chart options={pie.options} series={pie.series} type="pie" height={240} />
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
-            <div className="text-sm font-semibold mb-2">Types of Consumers</div>
-            <Chart options={pie.options} series={pie.series} type="pie" height={240} />
+            {tab === "All" ? (
+              <>
+                <div className="text-sm font-semibold mb-2">Types of Consumers</div>
+                <Chart options={pie.options} series={pie.series} type="pie" height={240} />
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-semibold mb-2">Consumption - TOD</div>
+                <Chart options={todPie.options} series={todPie.series} type="pie" height={240} />
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
@@ -422,14 +524,14 @@ export default function OverviewPage() {
 
         <div className="flex flex-col gap-4 min-h-0">
           <LeaderboardTable
-            className="lg:h-[330px]"
+            className="lg:h-[300px]"
             title="Industrial Consumer Leaderboard"
             rows={leaderboards.industrialRows}
             onRowClick={onRowClick}
             onViewMore={() => navigate("/monitor?tab=industrial")}
           />
           <LeaderboardTable
-            className="lg:h-[330px]"
+            className="lg:h-[300px]"
             title="Commercial Consumer Leaderboard"
             rows={leaderboards.commercialRows}
             onRowClick={onRowClick}
