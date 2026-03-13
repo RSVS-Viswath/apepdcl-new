@@ -350,15 +350,39 @@ export default function OverviewPage() {
   );
 
   const todPie = useMemo(() => {
+    const tooltip = {
+      enabled: true,
+      custom: ({ series, seriesIndex, w }) => {
+        const label = w?.globals?.labels?.[seriesIndex] ?? "";
+        const value = Number(series?.[seriesIndex] ?? 0);
+        const total = Array.isArray(series) ? series.reduce((a, b) => a + Number(b || 0), 0) : 0;
+        const pct = total > 0 ? (value / total) * 100 : 0;
+
+        const pctStr = `${pct.toFixed(1)}%`;
+        const valueStr = `${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MWh`;
+
+        return `
+          <div style="background: rgba(255,255,255,0.96); border: 1px solid rgba(148,163,184,0.45); border-radius: 10px; padding: 10px 12px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18); min-width: 160px;">
+            <div style="font-size: 12px; color: #0f172a; opacity: 0.88; margin-bottom: 4px;">${label}</div>
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${pctStr}</div>
+              <div style="font-size: 14px; color: #0f172a; opacity: 0.72;">(${valueStr})</div>
+            </div>
+          </div>
+        `;
+      },
+    };
+
     if (tab === "All") {
       const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
       return {
-        series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 12, 46)),
+        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
         options: {
           chart: { type: "pie", toolbar: { show: false } },
           labels,
           dataLabels: { enabled: false },
           legend: { position: "bottom" },
+          tooltip,
           colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
         },
       };
@@ -367,12 +391,13 @@ export default function OverviewPage() {
     if (tab === "Industrial") {
       const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
       return {
-        series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 12, 46)),
+        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
         options: {
           chart: { type: "pie", toolbar: { show: false } },
           labels,
           dataLabels: { enabled: false },
           legend: { position: "bottom" },
+          tooltip,
           colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
         },
       };
@@ -380,12 +405,13 @@ export default function OverviewPage() {
 
     const labels = ["Peak", "Normal"];
     return {
-      series: labels.map((label) => seededInt(`${seed}|tod|${label}`, 22, 64)),
+      series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
       options: {
         chart: { type: "pie", toolbar: { show: false } },
         labels,
         dataLabels: { enabled: false },
         legend: { position: "bottom" },
+        tooltip,
         colors: [todColors.peak1, todColors.normal],
       },
     };
