@@ -298,11 +298,16 @@ export default function DashboardHeader() {
     const tab = new URLSearchParams(location.search).get("tab");
     return tab === "industrial" ? "industrial" : "commercial";
   }, [location.search]);
+  const pathParts = useMemo(() => location.pathname.split("/").filter(Boolean), [location.pathname]);
+  const consumerScopedPage = pathParts[0] === "stats" || pathParts[0] === "analytics";
+  const consumerServiceNo = consumerScopedPage ? decodeURIComponent(pathParts[1] || "") : "";
+  const analyticsHref = consumerServiceNo ? `/analytics/${encodeURIComponent(consumerServiceNo)}${location.search}` : "";
 
   const isOverviewActive = location.pathname === "/";
   const isMonitorActive = location.pathname === "/monitor";
   const isConsumerActive = isMonitorActive && monitorTab === "commercial";
   const isIndustrialActive = isMonitorActive && monitorTab === "industrial";
+  const isAnalyticsActive = pathParts[0] === "analytics" || pathParts[0] === "stats";
 
   const accountName = "APEPDCL";
 
@@ -329,6 +334,11 @@ export default function DashboardHeader() {
             <NavLink to="/monitor?tab=industrial" className={navClass(isIndustrialActive)}>
               Industrial
             </NavLink>
+            {consumerScopedPage && consumerServiceNo ? (
+              <NavLink to={analyticsHref} className={navClass(isAnalyticsActive)}>
+                Analytics
+              </NavLink>
+            ) : null}
 
             <div className="relative ml-1">
               <button

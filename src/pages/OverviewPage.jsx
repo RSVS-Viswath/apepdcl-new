@@ -5,7 +5,7 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import { seededInt, seededNumber, seededShuffle } from "../lib/seeded";
 import { defaultOverviewRange, fromDateKey, toDateKey } from "../lib/dateKey";
-import { getAllConsumers } from "../lib/consumers";
+import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
 import { useNavigate } from "react-router-dom";
 import { FiActivity, FiPercent, FiTrendingUp, FiUsers } from "react-icons/fi";
 import { FaTrophy } from "react-icons/fa";
@@ -284,14 +284,23 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
 export default function OverviewPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("All");
+  const [district, setDistrict] = useState("All");
   const { startKey: defaultStart, endKey: defaultEnd } = useMemo(() => defaultOverviewRange(), []);
   const [startKey, setStartKey] = useState(defaultStart);
   const [endKey, setEndKey] = useState(defaultEnd);
 
-  const seed = `${startKey}|${endKey}|${tab}`;
-  const leaderboardSeed = `${startKey}|${endKey}|leaderboard`;
+  const seed = `${startKey}|${endKey}|${tab}|${district}`;
+  const leaderboardSeed = `${startKey}|${endKey}|leaderboard|${district}`;
   const categories = useMemo(() => buildDateCategories(startKey, endKey), [startKey, endKey]);
   const allConsumers = useMemo(() => getAllConsumers(), []);
+  const districtOptions = useMemo(
+    () => ["All", ...DISTRICT_OPTIONS.filter((option) => option !== "All Districts")],
+    []
+  );
+  const filteredConsumers = useMemo(() => {
+    if (district === "All") return allConsumers;
+    return allConsumers.filter((consumer) => String(consumer.serviceNo).slice(0, 3).toUpperCase() === district);
+  }, [allConsumers, district]);
 
   const stats = useMemo(() => {
     const tabBoost = tab === "All" ? 1 : 0.65;
@@ -304,8 +313,8 @@ export default function OverviewPage() {
   }, [seed, tab]);
 
   const consumerSplitPie = useMemo(() => {
-    const industrialCount = allConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY")).length;
-    const commercialCount = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL")).length;
+    const industrialCount = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY")).length;
+    const commercialCount = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL")).length;
     return {
       series: [industrialCount, commercialCount],
       options: {
@@ -316,7 +325,7 @@ export default function OverviewPage() {
         colors: [PURPLE, TEAL],
       },
     };
-  }, [allConsumers]);
+  }, [filteredConsumers]);
 
   const pie = useMemo(() => {
     const cfg =
@@ -373,7 +382,7 @@ export default function OverviewPage() {
       },
     };
 
-    if (tab === "All") {
+    if (tab === "Industrial") {
       const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
       return {
         series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
@@ -388,8 +397,8 @@ export default function OverviewPage() {
       };
     }
 
-    if (tab === "Industrial") {
-      const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
+    if (tab === "Commercial") {
+      const labels = ["Peak", "Off-Peak"];
       return {
         series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
         options: {
@@ -398,7 +407,7 @@ export default function OverviewPage() {
           dataLabels: { enabled: false },
           legend: { position: "bottom" },
           tooltip,
-          colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
+          colors: [todColors.peak1, todColors.offPeak],
         },
       };
     }
@@ -456,8 +465,8 @@ export default function OverviewPage() {
   }, [categories, seed]);
 
   const leaderboards = useMemo(() => {
-    const industrial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY"));
-    const commercial = allConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
+    const industrial = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY"));
+    const commercial = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("COMMERCIAL"));
 
     const scoreRow = (c) => {
       const score = seededNumber(`${leaderboardSeed}|lb|${c.serviceNo}|score`, 2.1, 29.8);
@@ -478,7 +487,7 @@ export default function OverviewPage() {
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
     return { industrialRows, commercialRows };
-  }, [allConsumers, leaderboardSeed]);
+  }, [filteredConsumers, leaderboardSeed]);
 
   const onRowClick = (r) => {
     const qs = new URLSearchParams({
@@ -498,24 +507,41 @@ export default function OverviewPage() {
           suffix="kWh"
           icon={<FiTrendingUp />}
         />
-        <StatCard label="Shifted Peak Units" value={stats.shiftedPeakUnits.toLocaleString()} suffix="h" icon={<FiActivity />} />
+        <StatCard label="Shifted Peak Units" value={stats.shiftedPeakUnits.toLocaleString()} suffix="kWh" icon={<FiActivity />} />
         <StatCard label="Participation Rate" value={stats.participationRate} suffix="%" icon={<FiPercent />} />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center sm:justify-between">
-        <div className="flex bg-white rounded-lg shadow p-1 w-fit">
-          {["All", "Industrial", "Commercial"].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-md text-[13px] font-medium ${
-                tab === t ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-              }`}
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="flex bg-white rounded-lg shadow p-1 w-fit">
+            {["All", "Industrial", "Commercial"].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`px-3 py-1.5 rounded-md text-[13px] font-medium ${
+                  tab === t ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <label className="flex items-center gap-2 bg-white rounded-lg shadow px-3 py-2 text-sm">
+            <span className="text-gray-500 whitespace-nowrap">District</span>
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="bg-transparent text-sm font-medium text-gray-900 outline-none"
             >
-              {t}
-            </button>
-          ))}
+              {districtOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <DateRangePicker
           startKey={startKey}
