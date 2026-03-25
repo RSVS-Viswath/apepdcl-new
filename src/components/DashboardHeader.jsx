@@ -266,30 +266,30 @@ function SettingsModal({ onClose }) {
   );
 }
 
-function OverviewModeToggle({ value, onChange }) {
-  const isControls = value === "controls";
+function OverviewModeToggle({ isListMode, onToggle }) {
+  const nextLabel = isListMode ? "overview" : "list";
 
   return (
     <button
       type="button"
-      onClick={() => onChange(isControls ? "navigation" : "controls")}
+      onClick={onToggle}
       className="flex items-center gap-3 rounded-xl bg-white shadow px-3 py-2 text-sm"
-      aria-pressed={isControls}
-      aria-label={`Switch to ${isControls ? "navigation" : "controls"} mode`}
+      aria-pressed={isListMode}
+      aria-label={`Switch to ${nextLabel} mode`}
     >
-      <span className={`font-medium transition ${!isControls ? "text-gray-900" : "text-gray-400"}`}>Navigation</span>
+      <span className={`font-medium transition ${!isListMode ? "text-gray-900" : "text-gray-400"}`}>Overview</span>
       <span
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-          isControls ? "bg-indigo-600" : "bg-slate-300"
+          isListMode ? "bg-indigo-600" : "bg-slate-300"
         }`}
       >
         <span
           className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-            isControls ? "translate-x-5" : "translate-x-1"
+            isListMode ? "translate-x-5" : "translate-x-1"
           }`}
         />
       </span>
-      <span className={`font-medium transition ${isControls ? "text-gray-900" : "text-gray-400"}`}>Controls</span>
+      <span className={`font-medium transition ${isListMode ? "text-gray-900" : "text-gray-400"}`}>List</span>
     </button>
   );
 }
@@ -328,7 +328,7 @@ function OverviewControls({ tab, district, startKey, todayKey, districtOptions, 
       </label>
 
       <SingleDatePicker
-        label="Start Date"
+        label="Date"
         value={startKey}
         maxKey={todayKey}
         onApply={onStartKeyChange}
@@ -336,7 +336,7 @@ function OverviewControls({ tab, district, startKey, todayKey, districtOptions, 
         triggerClassName="flex items-center bg-white rounded-lg shadow px-3 h-10 text-sm"
         labelClassName="text-gray-500 whitespace-nowrap"
         valueClassName="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap"
-        dialogTitle="Select Start Date"
+        dialogTitle="Select Date"
       />
     </div>
   );
@@ -349,7 +349,6 @@ export default function DashboardHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [overviewMode, setOverviewMode] = useState("navigation");
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
@@ -386,7 +385,9 @@ export default function DashboardHeader() {
 
   const monitorTab = useMemo(() => {
     const tab = new URLSearchParams(location.search).get("tab");
-    return tab === "industrial" ? "industrial" : "commercial";
+    if (tab === "industrial") return "industrial";
+    if (tab === "commercial") return "commercial";
+    return "all";
   }, [location.search]);
   const consumers = useMemo(() => getAllConsumers(), []);
   const pathParts = useMemo(() => location.pathname.split("/").filter(Boolean), [location.pathname]);
@@ -404,10 +405,6 @@ export default function DashboardHeader() {
   const isConsumerActive = isMonitorActive && monitorTab === "commercial";
   const isIndustrialActive = isMonitorActive && monitorTab === "industrial";
   const isAnalyticsActive = pathParts[0] === "analytics" || pathParts[0] === "stats";
-
-  useEffect(() => {
-    if (!isOverviewActive) setOverviewMode("navigation");
-  }, [isOverviewActive]);
 
   const overviewTabParam = searchParams.get("tab");
   const overviewDistrictParam = searchParams.get("district") || "All";
@@ -507,14 +504,14 @@ export default function DashboardHeader() {
           <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-2 w-full xl:w-auto">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
               {isOverviewActive ? (
-                <OverviewModeToggle value={overviewMode} onChange={setOverviewMode} />
+                <OverviewModeToggle isListMode={false} onToggle={() => navigate("/monitor")} />
               ) : null}
 
               <div className="flex flex-wrap items-center gap-1 min-w-0">
                 {isStatsPage ? (
                   <>
                     <SingleDatePicker
-                      label="Start Date"
+                      label="Date"
                       value={statsDayKey}
                       maxKey={todayKey}
                       onApply={applyStatsDay}
@@ -522,7 +519,7 @@ export default function DashboardHeader() {
                       triggerClassName="flex items-center bg-white rounded-lg shadow px-3 h-10 text-sm"
                       labelClassName="text-gray-500 whitespace-nowrap"
                       valueClassName="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap"
-                      dialogTitle="Select Start Date"
+                      dialogTitle="Select Date"
                     />
                     <NavLink
                       to={analyticsHref}
@@ -531,7 +528,7 @@ export default function DashboardHeader() {
                       Analytics
                     </NavLink>
                   </>
-                ) : isOverviewActive && overviewMode === "controls" ? (
+                ) : isOverviewActive ? (
                   <OverviewControls
                     tab={overviewTab}
                     district={overviewDistrict}

@@ -36,7 +36,9 @@ function Pagination({ activePage, onChange }) {
 export default function MonitorPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const selectedTab = searchParams.get("tab") === "industrial" ? "industrial" : "commercial";
+  const tabParam = searchParams.get("tab");
+  const selectedTab =
+    tabParam === "industrial" ? "industrial" : tabParam === "commercial" ? "commercial" : "all";
   const recordsRef = useRef(null);
 
   const [serviceSearch, setServiceSearch] = useState("");
@@ -49,7 +51,9 @@ export default function MonitorPage() {
   const visible = useMemo(() => {
     const tabFiltered = all.filter((r) => {
       const c = String(r.category).toUpperCase();
-      return selectedTab === "industrial" ? c.includes("INDUSTRY") : c.includes("COMMERCIAL");
+      if (selectedTab === "industrial") return c.includes("INDUSTRY");
+      if (selectedTab === "commercial") return c.includes("COMMERCIAL");
+      return true;
     });
 
     const search = serviceSearch.trim().toLowerCase();

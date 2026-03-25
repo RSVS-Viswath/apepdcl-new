@@ -420,7 +420,7 @@ export default function OverviewPage() {
     () => ({
       peak1: PURPLE,
       peak2: tint(PURPLE, 0.28),
-      normal: TEAL,
+      nonPeak: TEAL,
       offPeak: tint(TEAL, 0.34),
     }),
     []
@@ -451,7 +451,7 @@ export default function OverviewPage() {
     };
 
     if (tab === "Industrial") {
-      const labels = ["Peak-1", "Peak-2", "Normal", "Off-Peak"];
+      const labels = ["Peak 1", "Peak 2", "Non-Peak", "Off-Peak"];
       return {
         series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
         options: {
@@ -460,7 +460,7 @@ export default function OverviewPage() {
           dataLabels: { enabled: false },
           legend: { position: "bottom" },
           tooltip,
-          colors: [todColors.peak1, todColors.peak2, todColors.normal, todColors.offPeak],
+          colors: [todColors.peak1, todColors.peak2, todColors.nonPeak, todColors.offPeak],
         },
       };
     }
