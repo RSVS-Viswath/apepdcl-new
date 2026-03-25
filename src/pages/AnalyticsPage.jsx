@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Chart from "react-apexcharts";
-import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
 import { FiArrowLeft } from "react-icons/fi";
+import SingleDatePicker from "../components/SingleDatePicker";
 import { addDays, fromDateKey, toDateKey } from "../lib/dateKey";
 import { getAllConsumers } from "../lib/consumers";
 import { seededNumber } from "../lib/seeded";
@@ -60,108 +58,20 @@ function topMetricCard(label, value, suffix) {
   );
 }
 
-function DateBox({ label, value }) {
+function AnalyticsDatePicker({ value, max, onApply }) {
   return (
-    <div className="border border-gray-300 rounded-lg px-3 h-11 bg-gray-50 shadow-sm flex items-center justify-center">
-      <div className="flex items-center gap-2.5">
-        <div className="text-[10px] font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">{label} :</div>
-        <div className="text-[13px] font-semibold tabular-nums text-gray-900 whitespace-nowrap">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-function AnalyticsDateRangePicker({ startKey, endKey, onApply }) {
-  const [open, setOpen] = useState(false);
-  const [isNarrow, setIsNarrow] = useState(false);
-  const selectionRange = useMemo(
-    () => ({
-      startDate: fromDateKey(startKey),
-      endDate: fromDateKey(endKey),
-      key: "selection",
-    }),
-    [endKey, startKey]
-  );
-  const [draft, setDraft] = useState(selectionRange);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return undefined;
-    const mq = window.matchMedia("(max-width: 640px)");
-    const set = (value) => setIsNarrow(Boolean(value));
-    set(mq.matches);
-
-    const onChange = (event) => set(event.matches);
-    if (mq.addEventListener) mq.addEventListener("change", onChange);
-    else mq.addListener(onChange);
-
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-      else mq.removeListener(onChange);
-    };
-  }, []);
-
-  return (
-    <>
-      <div
-        onClick={() => {
-          setDraft(selectionRange);
-          setOpen(true);
-        }}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3 cursor-pointer select-none w-full sm:w-auto"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            setDraft(selectionRange);
-            setOpen(true);
-          }
-        }}
-      >
-        <DateBox label="Start Date" value={startKey} />
-        <DateBox label="End Date" value={endKey} />
-      </div>
-
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-xl shadow-2xl w-[95%] max-w-4xl p-4 max-h-[90vh] overflow-auto">
-            <div className="text-base font-semibold mb-4 text-center">Select Date Range</div>
-            <div className="flex justify-center w-full overflow-x-auto">
-              <DateRange
-                ranges={[draft]}
-                onChange={(ranges) => setDraft(ranges.selection)}
-                months={isNarrow ? 1 : 2}
-                direction={isNarrow ? "vertical" : "horizontal"}
-                showSelectionPreview
-                moveRangeOnFirstSelection={false}
-                rangeColors={["#2563eb"]}
-                weekdayDisplayFormat="EE"
-                dayDisplayFormat="d"
-              />
-            </div>
-            <div className="flex justify-end mt-6 gap-2">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg border text-sm" type="button">
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  onApply({
-                    startKey: toDateKey(draft.startDate),
-                    endKey: toDateKey(draft.endDate),
-                  });
-                  setOpen(false);
-                }}
-                className="bg-[#2563eb] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#1d4ed8]"
-                type="button"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
+    <SingleDatePicker
+      label="Start Date"
+      value={value}
+      maxKey={max}
+      onApply={onApply}
+      wrapperClassName="w-full sm:w-auto"
+      triggerClassName="border border-gray-300 rounded-lg px-3 h-11 bg-gray-50 shadow-sm flex items-center justify-center"
+      labelClassName="text-[10px] font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap"
+      valueClassName="text-[13px] font-semibold tabular-nums text-gray-900 whitespace-nowrap"
+      dialogTitle="Select Start Date"
+      calendarColor="#2563eb"
+    />
   );
 }
 
@@ -175,20 +85,17 @@ export default function AnalyticsPage() {
   const consumerName = searchParams.get("consumerName") || fallback?.consumerName || "Consumer";
   const category = searchParams.get("category") || fallback?.category || "--";
   const isCommercial = String(category).toUpperCase().includes("COMMERCIAL");
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
   const [startKey, setStartKey] = useState(() => toDateKey(addDays(new Date(), -6)));
-  const [endKey, setEndKey] = useState(() => toDateKey(new Date()));
   const [weeklyMonth, setWeeklyMonth] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [heatmapEndKey, setHeatmapEndKey] = useState(() => toDateKey(new Date()));
+  const endKey = todayKey;
 
   const analyticsSeed = `${serviceNo}|${category}|${startKey}|${endKey}`;
   const visibleDays = useMemo(() => buildDays(startKey, endKey), [startKey, endKey]);
-  const last30Days = useMemo(
-    () => Array.from({ length: 30 }, (_, index) => addDays(fromDateKey(heatmapEndKey), -(29 - index))),
-    [heatmapEndKey]
-  );
+  const last30Days = useMemo(() => Array.from({ length: 30 }, (_, index) => addDays(fromDateKey(todayKey), -(29 - index))), [todayKey]);
 
   const hourlyRows = useMemo(
     () =>
@@ -407,7 +314,7 @@ export default function AnalyticsPage() {
             const value = Number(series?.[seriesIndex]?.[dataPointIndex] ?? 0);
             return `
               <div style="background:#000; color:#fff; padding:10px 12px; border-radius:6px; min-width:170px;">
-                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${dateLabel}, ${fromDateKey(heatmapEndKey).getFullYear()}</div>
+                <div style="font-size:13px; font-weight:700; margin-bottom:2px;">${dateLabel}</div>
                 <div style="font-size:12px; margin-bottom:2px;">Hour: ${hourLabel}</div>
                 <div style="font-size:12px;">Consumption: ${value.toFixed(2)} kWh</div>
               </div>
@@ -416,7 +323,7 @@ export default function AnalyticsPage() {
         },
       },
     }),
-    [heatmapEndKey, heatmapSeries]
+    [heatmapSeries]
   );
 
   const statsQuery = searchParams.toString();
@@ -440,14 +347,7 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <AnalyticsDateRangePicker
-              startKey={startKey}
-              endKey={endKey}
-              onApply={({ startKey: nextStart, endKey: nextEnd }) => {
-                setStartKey(nextStart);
-                setEndKey(nextEnd);
-              }}
-            />
+            <AnalyticsDatePicker value={startKey} max={todayKey} onApply={setStartKey} />
             <button
               type="button"
               className="h-11 px-4 rounded-lg bg-[#2563eb] text-sm font-semibold text-white shadow-sm hover:bg-[#1d4ed8]"
@@ -465,7 +365,6 @@ export default function AnalyticsPage() {
                 type="button"
                 onClick={() => {
                   setStartKey(toDateKey(addDays(new Date(), -6)));
-                  setEndKey(toDateKey(new Date()));
                 }}
                 className="px-3 py-1 text-xs rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
               >
@@ -475,7 +374,6 @@ export default function AnalyticsPage() {
                 type="button"
                 onClick={() => {
                   setStartKey(toDateKey(addDays(new Date(), -29)));
-                  setEndKey(toDateKey(new Date()));
                 }}
                 className="px-3 py-1 text-xs rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
               >
@@ -552,17 +450,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-3">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="text-sm font-semibold text-gray-900">Hourly Consumption Heat Map (Last 30 Days)</div>
-            <label className="h-9 px-3 rounded-lg border border-gray-300 bg-white flex items-center">
-              <input
-                type="date"
-                value={heatmapEndKey}
-                onChange={(e) => setHeatmapEndKey(e.target.value)}
-                className="w-full bg-transparent outline-none text-sm text-gray-600 tabular-nums"
-              />
-            </label>
-          </div>
+          <div className="text-sm font-semibold text-gray-900 mb-2">Hourly Consumption Heat Map (Last 30 Days)</div>
           <Chart options={heatmapChart.options} series={heatmapChart.series} type="heatmap" height={660} />
         </div>
       </div>

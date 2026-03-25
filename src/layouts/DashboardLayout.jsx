@@ -9,11 +9,11 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {hideHeader ? null : <DashboardHeader />}
-      <main className="w-full px-4 py-4 2xl:px-8 flex-1">
+      <main className="w-full px-4 py-3 2xl:px-8 flex-1">
         <Outlet />
       </main>
-      <footer className="px-4 pb-4 2xl:px-8">
-        <div className="border-t border-slate-200/70 pt-3">
+      <footer className="px-4 pb-2 2xl:px-8">
+        <div className="border-t border-slate-200/70 pt-2">
           <p className="text-center text-[11px] font-normal tracking-[0.08em] text-slate-400/90">
             © {currentYear}. All rights reserved ELEMENTS ENERGY TECHNOLOGIES PRIVATE LIMITED
           </p>

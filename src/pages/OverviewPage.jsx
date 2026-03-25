@@ -1,18 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Chart from "react-apexcharts";
-import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { seededInt, seededNumber, seededShuffle } from "../lib/seeded";
-import { defaultOverviewRange, fromDateKey, toDateKey } from "../lib/dateKey";
+import { defaultOverviewStartKey, fromDateKey, toDateKey, todayDateKey } from "../lib/dateKey";
 import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FiActivity, FiPercent, FiTrendingUp, FiUsers } from "react-icons/fi";
 import { FaTrophy } from "react-icons/fa";
 
 // Match legacy client theme graph palette
 const TEAL = "#13C4A9";
 const PURPLE = "#6A42B2";
+const OVERVIEW_TABS = ["All", "Industrial", "Commercial"];
+const DISTRICT_MAP = {
+  SKM: { name: "Srikakulam", lat: 18.2969, lng: 83.8976 },
+  VZM: { name: "Vizianagaram", lat: 18.1166, lng: 83.4115 },
+  VSP: { name: "Visakhapatnam", lat: 17.6868, lng: 83.2185 },
+  AKP: { name: "Anakapalle", lat: 17.6903, lng: 83.0086 },
+  EDG: { name: "East Godavari", lat: 17.0005, lng: 81.804 },
+  ELR: { name: "West Godavari", lat: 16.7107, lng: 81.0952 },
+};
 
 function tint(hex, amount01) {
   const h = hex.replace("#", "");
@@ -64,114 +72,6 @@ function StatCard({ label, value, suffix, icon }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function DateRangePicker({ startKey, endKey, onApply }) {
-  const [open, setOpen] = useState(false);
-  const [isNarrow, setIsNarrow] = useState(false);
-  const selectionRange = useMemo(
-    () => ({
-      startDate: fromDateKey(startKey),
-      endDate: fromDateKey(endKey),
-      key: "selection",
-    }),
-    [startKey, endKey]
-  );
-
-  const [draft, setDraft] = useState(selectionRange);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return undefined;
-    const mq = window.matchMedia("(max-width: 640px)");
-    const set = (v) => setIsNarrow(Boolean(v));
-    set(mq.matches);
-
-    const onChange = (e) => set(e.matches);
-    if (mq.addEventListener) mq.addEventListener("change", onChange);
-    else mq.addListener(onChange);
-
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-      else mq.removeListener(onChange);
-    };
-  }, []);
-
-  return (
-    <>
-      <div
-        onClick={() => {
-          setDraft(selectionRange);
-          setOpen(true);
-        }}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3 cursor-pointer select-none w-full sm:w-auto"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setDraft(selectionRange);
-            setOpen(true);
-          }
-        }}
-      >
-        <div className="border border-gray-300 rounded-xl px-4 h-12 bg-gray-50 shadow-sm hover:bg-gray-100 transition flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <div className="text-xs font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
-              Start Date :
-            </div>
-            <div className="text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap leading-none">{startKey}</div>
-          </div>
-        </div>
-        <div className="border border-gray-300 rounded-xl px-4 h-12 bg-gray-50 shadow-sm hover:bg-gray-100 transition flex items-center justify-center">
-          <div className="flex items-center gap-3">
-            <div className="text-xs font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
-              End Date :
-            </div>
-            <div className="text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap leading-none">{endKey}</div>
-          </div>
-        </div>
-      </div>
-
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-[95%] max-w-4xl p-5 max-h-[90vh] overflow-auto">
-            <div className="text-lg font-semibold mb-4 text-center">Select Date Range</div>
-            <div className="flex justify-center w-full overflow-x-auto">
-              <DateRange
-                ranges={[draft]}
-                onChange={(ranges) => setDraft(ranges.selection)}
-                months={isNarrow ? 1 : 2}
-                direction={isNarrow ? "vertical" : "horizontal"}
-                showSelectionPreview
-                moveRangeOnFirstSelection={false}
-                rangeColors={["#4F46E5"]}
-                weekdayDisplayFormat="EE"
-                dayDisplayFormat="d"
-              />
-            </div>
-            <div className="flex justify-end mt-6 gap-2">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg border text-sm" type="button">
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const s = toDateKey(draft.startDate);
-                  const e = toDateKey(draft.endDate);
-                  onApply({ startKey: s, endKey: e });
-                  setOpen(false);
-                }}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-                type="button"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
   );
 }
 
@@ -281,26 +181,194 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
   );
 }
 
+function matchesTab(category, tab) {
+  const categoryText = String(category).toUpperCase();
+  if (tab === "Industrial") return categoryText.includes("INDUSTRY");
+  if (tab === "Commercial") return categoryText.includes("COMMERCIAL");
+  return true;
+}
+
+function AndhraConsumerMap({ consumers, onConsumerClick }) {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerLayerRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return undefined;
+
+    const coastalApBounds = L.latLngBounds([16.05, 80.75], [18.65, 84.15]);
+
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: true,
+      scrollWheelZoom: false,
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 18,
+    }).addTo(map);
+
+    map.fitBounds(coastalApBounds);
+    map.setMaxBounds(coastalApBounds.pad(0.03));
+    map.setMinZoom(map.getZoom());
+
+    const districtLayer = L.layerGroup().addTo(map);
+    Object.entries(DISTRICT_MAP).forEach(([code, district]) => {
+      L.circleMarker([district.lat, district.lng], {
+        radius: 7,
+        color: "#2563eb",
+        weight: 2,
+        fillColor: "#dbeafe",
+        fillOpacity: 0.9,
+      })
+        .bindTooltip(`${code} · ${district.name}`, {
+          permanent: true,
+          direction: "top",
+          offset: [0, -12],
+          className: "overview-district-label",
+        })
+        .addTo(districtLayer);
+    });
+
+    markerLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+
+    const invalidate = () => map.invalidateSize();
+    const onWheel = (event) => {
+      if (event.ctrlKey) {
+        map.scrollWheelZoom.enable();
+        return;
+      }
+
+      map.scrollWheelZoom.disable();
+      event.preventDefault();
+    };
+    const disableWheelZoom = () => map.scrollWheelZoom.disable();
+
+    window.setTimeout(invalidate, 0);
+    window.addEventListener("resize", invalidate);
+    map.getContainer().addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("keyup", disableWheelZoom);
+
+    return () => {
+      window.removeEventListener("resize", invalidate);
+      window.removeEventListener("keyup", disableWheelZoom);
+      map.getContainer().removeEventListener("wheel", onWheel);
+      markerLayerRef.current = null;
+      mapRef.current = null;
+      map.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const markerLayer = markerLayerRef.current;
+    if (!markerLayer) return;
+
+    markerLayer.clearLayers();
+
+    consumers.forEach((consumer) => {
+      const isIndustrial = String(consumer.category).toUpperCase().includes("INDUSTRY");
+      const marker = L.circleMarker([consumer.mapLat, consumer.mapLng], {
+        radius: isIndustrial ? 7 : 6,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: isIndustrial ? PURPLE : TEAL,
+        fillOpacity: 0.95,
+      });
+
+      marker.bindTooltip(
+        `
+          <div style="min-width: 150px;">
+            <div style="font-weight: 700; color: #0f172a;">${consumer.consumerName}</div>
+            <div style="font-size: 12px; color: #475569;">${consumer.serviceNo}</div>
+          </div>
+        `,
+        {
+          direction: "top",
+          offset: [0, -10],
+          opacity: 1,
+        }
+      );
+      marker.on("click", () => onConsumerClick(consumer));
+      marker.addTo(markerLayer);
+    });
+  }, [consumers, onConsumerClick]);
+
+  return (
+    <div className="bg-white rounded-lg shadow p-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-3">
+        <div>
+          <div className="text-base font-semibold text-gray-900">APEPDCL Consumer Map</div>
+          <div className="text-sm text-gray-500">Hover a consumer point to view the name and service number. Click to open stats.</div>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#6A42B2]" />
+            Industrial
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#13C4A9]" />
+            Commercial
+          </div>
+          <div className="text-gray-400">{consumers.length} consumers shown</div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200">
+        <div ref={mapContainerRef} className="h-[560px] w-full" />
+      </div>
+    </div>
+  );
+}
+
 export default function OverviewPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState("All");
-  const [district, setDistrict] = useState("All");
-  const { startKey: defaultStart, endKey: defaultEnd } = useMemo(() => defaultOverviewRange(), []);
-  const [startKey, setStartKey] = useState(defaultStart);
-  const [endKey, setEndKey] = useState(defaultEnd);
-
-  const seed = `${startKey}|${endKey}|${tab}|${district}`;
-  const leaderboardSeed = `${startKey}|${endKey}|leaderboard|${district}`;
-  const categories = useMemo(() => buildDateCategories(startKey, endKey), [startKey, endKey]);
+  const [searchParams] = useSearchParams();
+  const defaultStart = useMemo(() => defaultOverviewStartKey(), []);
+  const todayKey = useMemo(() => todayDateKey(), []);
   const allConsumers = useMemo(() => getAllConsumers(), []);
   const districtOptions = useMemo(
     () => ["All", ...DISTRICT_OPTIONS.filter((option) => option !== "All Districts")],
     []
   );
+
+  const tabParam = searchParams.get("tab");
+  const districtParam = searchParams.get("district") || "All";
+  const startParam = searchParams.get("startKey");
+  const tab = OVERVIEW_TABS.includes(tabParam) ? tabParam : "All";
+  const district = districtOptions.includes(districtParam) ? districtParam : "All";
+  const startKey =
+    startParam && !Number.isNaN(fromDateKey(startParam).getTime())
+      ? startParam > todayKey
+        ? todayKey
+        : startParam
+      : defaultStart;
+  const endKey = todayKey;
+
+  const seed = `${startKey}|${endKey}|${tab}|${district}`;
+  const leaderboardSeed = `${startKey}|${endKey}|leaderboard|${district}`;
+  const categories = useMemo(() => buildDateCategories(startKey, endKey), [endKey, startKey]);
   const filteredConsumers = useMemo(() => {
     if (district === "All") return allConsumers;
     return allConsumers.filter((consumer) => String(consumer.serviceNo).slice(0, 3).toUpperCase() === district);
   }, [allConsumers, district]);
+  const mapConsumers = useMemo(
+    () =>
+      filteredConsumers
+        .filter((consumer) => matchesTab(consumer.category, tab))
+        .map((consumer) => {
+          const districtCode = String(consumer.serviceNo).slice(0, 3).toUpperCase();
+          const districtCenter = DISTRICT_MAP[districtCode];
+          const latOffset = seededNumber(`${consumer.serviceNo}|map|lat`, -0.18, 0.18);
+          const lngOffset = seededNumber(`${consumer.serviceNo}|map|lng`, -0.22, 0.22);
+          return {
+            ...consumer,
+            mapLat: (districtCenter?.lat ?? 16.8) + latOffset,
+            mapLng: (districtCenter?.lng ?? 81.6) + lngOffset,
+          };
+        }),
+    [filteredConsumers, tab]
+  );
 
   const stats = useMemo(() => {
     const tabBoost = tab === "All" ? 1 : 0.65;
@@ -412,7 +480,7 @@ export default function OverviewPage() {
       };
     }
 
-    const labels = ["Peak", "Normal"];
+    const labels = ["Peak", "Non-Peak"];
     return {
       series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
       options: {
@@ -421,45 +489,43 @@ export default function OverviewPage() {
         dataLabels: { enabled: false },
         legend: { position: "bottom" },
         tooltip,
-        colors: [todColors.peak1, todColors.normal],
+        colors: [todColors.peak1, todColors.offPeak],
       },
     };
   }, [seed, tab, todColors]);
 
-  const line = useMemo(() => {
-    const withResponse = categories.map((k, i) => seededInt(`${seed}|line|wr|${k}|${i}`, 62, 118));
-    const withoutResponse = categories.map((k, i) => seededInt(`${seed}|line|wor|${k}|${i}`, 72, 132));
+  const peakVsNonPeak = useMemo(() => {
+    const peakUnits = categories.map((k, i) => seededInt(`${seed}|bar|peak|${k}|${i}`, 320, 980));
+    const normalUnits = categories.map((k, i) => seededInt(`${seed}|bar|normal|${k}|${i}`, 540, 1380));
+    const totals = peakUnits.map((value, index) => value + normalUnits[index]);
     return {
       series: [
-        { name: "withResponse", data: withResponse },
-        { name: "withoutResponse", data: withoutResponse },
-      ],
-      options: {
-        chart: { type: "line", toolbar: { show: false }, zoom: { enabled: false } },
-        stroke: { curve: "smooth", width: 2 },
-        dataLabels: { enabled: false },
-        xaxis: { categories },
-        colors: [TEAL, PURPLE],
-        legend: { position: "bottom" },
-      },
-    };
-  }, [categories, seed]);
-
-  const bar = useMemo(() => {
-    const dailyConsumption = categories.map((k, i) => seededInt(`${seed}|bar|dc|${k}|${i}`, 780, 1550));
-    const peakShifted = categories.map((k, i) => seededInt(`${seed}|bar|ps|${k}|${i}`, 120, 640));
-    return {
-      series: [
-        { name: "dailyConsumption", data: dailyConsumption },
-        { name: "peakShifted", data: peakShifted },
+        { name: "Non-Peak", data: normalUnits },
+        { name: "Peak", data: peakUnits },
       ],
       options: {
         chart: { type: "bar", stacked: true, toolbar: { show: false } },
-        plotOptions: { bar: { columnWidth: "55%", borderRadius: 4 } },
+        plotOptions: { bar: { columnWidth: "54%", borderRadius: 4, borderRadiusApplication: "end" } },
         dataLabels: { enabled: false },
         xaxis: { categories },
         legend: { position: "bottom" },
         colors: [TEAL, PURPLE],
+        tooltip: {
+          custom: ({ dataPointIndex }) => {
+            const day = categories[dataPointIndex] ?? "";
+            const peak = peakUnits[dataPointIndex] ?? 0;
+            const normal = normalUnits[dataPointIndex] ?? 0;
+            const total = totals[dataPointIndex] ?? 0;
+
+            return `
+              <div style="background: rgba(255,255,255,0.96); border: 1px solid rgba(148,163,184,0.45); border-radius: 10px; padding: 10px 12px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18); min-width: 180px;">
+                <div style="font-size: 12px; color: #0f172a; opacity: 0.82; margin-bottom: 6px;">${day}</div>
+                <div style="font-size: 13px; color: #0f172a; margin-bottom: 3px;"><strong>Total Consumption:</strong> ${total.toLocaleString()} kWh</div>
+                <div style="font-size: 12px; color: #475569;">Peak: ${peak.toLocaleString()} kWh | Non-Peak: ${normal.toLocaleString()} kWh</div>
+              </div>
+            `;
+          },
+        },
       },
     };
   }, [categories, seed]);
@@ -478,12 +544,12 @@ export default function OverviewPage() {
 
     const industrialRows = seededShuffle(`${leaderboardSeed}|lb|ind`, industrial.map(scoreRow))
       .sort((a, b) => Number.parseFloat(b.score) - Number.parseFloat(a.score))
-      .slice(0, 5)
+      .slice(0, 4)
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
     const commercialRows = seededShuffle(`${leaderboardSeed}|lb|com`, commercial.map(scoreRow))
       .sort((a, b) => Number.parseFloat(b.score) - Number.parseFloat(a.score))
-      .slice(0, 5)
+      .slice(0, 4)
       .map((r, idx) => ({ ...r, position: idx + 1 }));
 
     return { industrialRows, commercialRows };
@@ -511,105 +577,61 @@ export default function OverviewPage() {
         <StatCard label="Participation Rate" value={stats.participationRate} suffix="%" icon={<FiPercent />} />
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <div className="flex bg-white rounded-lg shadow p-1 w-fit">
-            {["All", "Industrial", "Commercial"].map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`px-3 py-1.5 rounded-md text-[13px] font-medium ${
-                  tab === t ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <label className="flex items-center gap-2 bg-white rounded-lg shadow px-3 py-2 text-sm">
-            <span className="text-gray-500 whitespace-nowrap">District</span>
-            <select
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              className="bg-transparent text-sm font-medium text-gray-900 outline-none"
-            >
-              {districtOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <DateRangePicker
-          startKey={startKey}
-          endKey={endKey}
-          onApply={({ startKey: s, endKey: e }) => {
-            setStartKey(s);
-            setEndKey(e);
-          }}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-          <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:items-stretch">
+          <div className="bg-white rounded-lg shadow p-3 h-full">
             {tab === "All" ? (
               <>
                 <div className="text-sm font-semibold mb-2">Total Consumers: Industrial vs Commercial</div>
-                <Chart options={consumerSplitPie.options} series={consumerSplitPie.series} type="pie" height={240} />
+                <Chart options={consumerSplitPie.options} series={consumerSplitPie.series} type="pie" height={220} />
               </>
             ) : (
               <>
                 <div className="text-sm font-semibold mb-2">Types of Consumers</div>
-                <Chart options={pie.options} series={pie.series} type="pie" height={240} />
+                <Chart options={pie.options} series={pie.series} type="pie" height={220} />
               </>
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
+          <div className="bg-white rounded-lg shadow p-3 h-full">
             {tab === "All" ? (
               <>
                 <div className="text-sm font-semibold mb-2">Total Consumption - TOD</div>
-                <Chart options={todPie.options} series={todPie.series} type="pie" height={240} />
+                <Chart options={todPie.options} series={todPie.series} type="pie" height={220} />
               </>
             ) : (
               <>
                 <div className="text-sm font-semibold mb-2">Consumption - TOD</div>
-                <Chart options={todPie.options} series={todPie.series} type="pie" height={240} />
+                <Chart options={todPie.options} series={todPie.series} type="pie" height={220} />
               </>
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
-            <div className="text-sm font-semibold mb-2">Daily Performance</div>
-            <Chart options={bar.options} series={bar.series} type="bar" height={240} />
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-3 lg:min-h-[330px]">
-            <div className="text-sm font-semibold mb-2">Peak Analytics: Total vs Shift</div>
-            <Chart options={line.options} series={line.series} type="line" height={240} />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4 min-h-0">
           <LeaderboardTable
-            className="lg:h-[330px]"
+            className="h-full"
             title="Industrial Consumer Leaderboard"
             rows={leaderboards.industrialRows}
             onRowClick={onRowClick}
             onViewMore={() => navigate("/monitor?tab=industrial")}
           />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:items-stretch">
+          <div className="bg-white rounded-lg shadow p-3 lg:col-span-2 h-full">
+            <div className="text-sm font-semibold mb-2">Peak vs Non-Peak (Last 14 Days)</div>
+            <Chart options={peakVsNonPeak.options} series={peakVsNonPeak.series} type="bar" height={235} />
+          </div>
+
           <LeaderboardTable
-            className="lg:h-[330px]"
+            className="h-full"
             title="Commercial Consumer Leaderboard"
             rows={leaderboards.commercialRows}
             onRowClick={onRowClick}
             onViewMore={() => navigate("/monitor?tab=commercial")}
           />
         </div>
+
+        <AndhraConsumerMap consumers={mapConsumers} onConsumerClick={onRowClick} />
       </div>
     </div>
   );

@@ -1,123 +1,79 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import Chart from "react-apexcharts";
-import { DateRange } from "react-date-range";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
 import { getAllConsumers } from "../lib/consumers";
 import { fromDateKey, lastNDaysKeys, toDateKey } from "../lib/dateKey";
 import { seededInt, seededNumber } from "../lib/seeded";
-import { FiActivity, FiAward, FiDollarSign, FiMoon, FiSun } from "react-icons/fi";
+import { FiActivity, FiMaximize2, FiMoon, FiSun, FiX } from "react-icons/fi";
 
 // Match legacy client theme graph palette
 const TEAL = "#13C4A9";
 const PURPLE = "#6A42B2";
 const RED = "#ef4444";
 
-function DateBox({ label, value }) {
+function FullHistoryModal({ rows, selectedDayKey, onDayClick, onClose }) {
   return (
-    <div className="border border-gray-300 rounded-xl px-4 h-14 bg-gray-50 shadow-sm flex items-center justify-center">
-      <div className="flex items-center gap-2.5">
-        <div className="text-[11px] font-semibold tracking-wide text-gray-600 uppercase whitespace-nowrap">
-          {label} :
-        </div>
-        <div className="text-sm font-semibold tabular-nums text-gray-900 whitespace-nowrap">{value}</div>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-6xl rounded-2xl bg-white shadow-xl border p-4 sm:p-5 max-h-[90vh] overflow-auto">
+        <button
+          type="button"
+          aria-label="Close full history"
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100"
+        >
+          <FiX className="text-xl" />
+        </button>
+        <div className="text-lg font-semibold pr-10 mb-4">Shift History</div>
+        <table className="w-full text-[12px] border border-gray-200 border-collapse bg-white table-fixed">
+          <thead className="text-gray-600 bg-[#f6f3ff]">
+            <tr className="text-left">
+              <th rowSpan={2} className="py-2 px-2 font-medium border border-gray-200">
+                Date
+              </th>
+              <th rowSpan={2} className="py-2 px-2 font-medium border border-gray-200">
+                Time
+              </th>
+              <th colSpan={2} className="py-2 px-2 font-medium text-center border border-gray-200">
+                Percentage (%)
+              </th>
+              <th colSpan={2} className="py-2 px-2 font-medium text-center border border-gray-200">
+                Value (kWh)
+              </th>
+              <th rowSpan={2} className="py-2 px-2 font-medium text-right border border-gray-200">
+                Points
+              </th>
+            </tr>
+            <tr className="text-left">
+              <th className="py-2 px-2 font-medium text-center border border-gray-200">Recorded</th>
+              <th className="py-2 px-2 font-medium text-center border border-gray-200">Shifted</th>
+              <th className="py-2 px-2 font-medium text-center border border-gray-200">Recorded</th>
+              <th className="py-2 px-2 font-medium text-center border border-gray-200">Shifted</th>
+            </tr>
+          </thead>
+          <tbody className="tabular-nums">
+            {rows.map((r) => (
+              <tr
+                key={r.dayKey}
+                onClick={() => {
+                  onDayClick(r.dayKey);
+                  onClose();
+                }}
+                className={`cursor-pointer hover:bg-gray-50 ${r.dayKey === selectedDayKey ? "bg-indigo-50" : "bg-white"}`}
+              >
+                <td className="py-2 px-2 font-medium border border-gray-200">{r.dayKey}</td>
+                <td className="py-2 px-2 border border-gray-200">{r.timeLabel}</td>
+                <td className="py-2 px-2 text-center border border-gray-200">{r.percentRecorded}%</td>
+                <td className="py-2 px-2 text-center border border-gray-200">{r.percentShifted}%</td>
+                <td className="py-2 px-2 text-center border border-gray-200">{r.valueRecorded}</td>
+                <td className="py-2 px-2 text-center border border-gray-200">{r.valueShifted}</td>
+                <td className="py-2 px-2 text-right font-semibold text-[#6A42B2] border border-gray-200">{r.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
-  );
-}
-
-function StatsDateRangePicker({ startKey, endKey, onApply }) {
-  const [open, setOpen] = useState(false);
-  const [isNarrow, setIsNarrow] = useState(false);
-  const selectionRange = useMemo(
-    () => ({
-      startDate: fromDateKey(startKey),
-      endDate: fromDateKey(endKey),
-      key: "selection",
-    }),
-    [endKey, startKey]
-  );
-
-  const [draft, setDraft] = useState(selectionRange);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return undefined;
-    const mq = window.matchMedia("(max-width: 640px)");
-    const set = (v) => setIsNarrow(Boolean(v));
-    set(mq.matches);
-
-    const onChange = (e) => set(e.matches);
-    if (mq.addEventListener) mq.addEventListener("change", onChange);
-    else mq.addListener(onChange);
-
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-      else mq.removeListener(onChange);
-    };
-  }, []);
-
-  return (
-    <>
-      <div
-        onClick={() => {
-          setDraft(selectionRange);
-          setOpen(true);
-        }}
-        className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full xl:w-auto cursor-pointer select-none"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setDraft(selectionRange);
-            setOpen(true);
-          }
-        }}
-      >
-        <DateBox label="Start Date" value={startKey} />
-        <DateBox label="End Date" value={endKey} />
-      </div>
-
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-[95%] max-w-4xl p-5 max-h-[90vh] overflow-auto">
-            <div className="text-lg font-semibold mb-4 text-center">Select Date Range</div>
-            <div className="flex justify-center w-full overflow-x-auto">
-              <DateRange
-                ranges={[draft]}
-                onChange={(ranges) => setDraft(ranges.selection)}
-                months={isNarrow ? 1 : 2}
-                direction={isNarrow ? "vertical" : "horizontal"}
-                showSelectionPreview
-                moveRangeOnFirstSelection={false}
-                rangeColors={["#4F46E5"]}
-                weekdayDisplayFormat="EE"
-                dayDisplayFormat="d"
-              />
-            </div>
-            <div className="flex justify-end mt-6 gap-2">
-              <button onClick={() => setOpen(false)} className="px-4 py-2 rounded-lg border text-sm" type="button">
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const s = toDateKey(draft.startDate);
-                  const e = toDateKey(draft.endDate);
-                  onApply({ startKey: s, endKey: e });
-                  setOpen(false);
-                }}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-                type="button"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
   );
 }
 
@@ -185,15 +141,12 @@ function buildHourlySeries(serviceNo, dayKey, { includeMorning, includeEvening }
 export default function StatsPage() {
   const { serviceNo: rawServiceNo } = useParams();
   const serviceNo = decodeURIComponent(rawServiceNo || "");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const consumers = useMemo(() => getAllConsumers(), []);
   const fallback = consumers.find((c) => c.serviceNo === serviceNo);
 
-  const consumerName = searchParams.get("consumerName") || fallback?.consumerName || "Consumer";
   const category = searchParams.get("category") || fallback?.category || "--";
-  const htIncomerKv = fallback?.htIncomerKv ?? 11;
-  const position = useMemo(() => seededInt(`${serviceNo}|position`, 1, 50), [serviceNo]);
   const isCommercial = useMemo(() => String(category).toUpperCase().includes("COMMERCIAL"), [category]);
   const peakWindow = useMemo(
     () => ({
@@ -203,10 +156,16 @@ export default function StatsPage() {
     [isCommercial]
   );
 
-  const [selectedDayKey, setSelectedDayKey] = useState(() => toDateKey(new Date()));
-  const [startKey, setStartKey] = useState(() => toDateKey(new Date()));
-  const [endKey, setEndKey] = useState(() => toDateKey(new Date()));
+  const todayKey = useMemo(() => toDateKey(new Date()), []);
+  const selectedDayParam = searchParams.get("day");
+  const selectedDayKey =
+    selectedDayParam && !Number.isNaN(fromDateKey(selectedDayParam).getTime())
+      ? selectedDayParam > todayKey
+        ? todayKey
+        : selectedDayParam
+      : todayKey;
   const [dayUpdating, setDayUpdating] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const topRef = useRef(null);
   const topSectionRef = useRef(null);
   const [bottomHeight, setBottomHeight] = useState(null);
@@ -260,7 +219,7 @@ export default function StatsPage() {
   }, [bottomHeight]);
 
   const historyRows = useMemo(() => {
-    const endDate = fromDateKey(endKey);
+    const endDate = fromDateKey(selectedDayKey);
     const keys = lastNDaysKeys(7, Number.isNaN(endDate.getTime()) ? new Date() : endDate).slice().reverse(); // latest first
     return keys
       .map((dayKey) => ({
@@ -286,7 +245,7 @@ export default function StatsPage() {
         })(),
         points: seededInt(`${serviceNo}|${dayKey}|points`, 220, 420),
       }));
-  }, [endKey, serviceNo]);
+  }, [selectedDayKey, serviceNo]);
 
   const stats = useMemo(() => {
     const seed = `${serviceNo}|${selectedDayKey}`;
@@ -340,26 +299,45 @@ export default function StatsPage() {
       fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.55, opacityTo: 0.05, stops: [0, 100] } },
       xaxis: { categories, title: { text: "Hours", style: { fontWeight: 400 } } },
       yaxis: { title: { text: "Consumption (kWh)", style: { fontWeight: 400 } } },
-      legend: { position: "bottom" },
+      legend: { show: false },
       colors: [TEAL, PURPLE],
       annotations: {
-        xaxis: peakLines.map((x) => ({
-          x,
-          borderColor: RED,
-          strokeDashArray: 6,
-        })),
+        xaxis: peakLines.reduce((ranges, x, index, arr) => {
+          if (index % 2 !== 0) return ranges;
+          const end = arr[index + 1];
+          if (end == null) return ranges;
+          ranges.push({
+            x,
+            x2: end,
+            fillColor: RED,
+            opacity: 0.12,
+            borderColor: "transparent",
+          });
+          return ranges;
+        }, []),
       },
     };
   }, [peakWindow.includeMorning]);
+
+  const applySelectedDay = (dayKey) => {
+    const normalizedDay =
+      dayKey && !Number.isNaN(fromDateKey(dayKey).getTime())
+        ? dayKey > todayKey
+          ? todayKey
+          : dayKey
+        : todayKey;
+    const next = new URLSearchParams(searchParams);
+    if (normalizedDay === todayKey) next.delete("day");
+    else next.set("day", normalizedDay);
+    setSearchParams(next);
+  };
 
   const onDayClick = (dayKey) => {
     if (dayKey === selectedDayKey) return;
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setDayUpdating(true);
     window.setTimeout(() => {
-      setSelectedDayKey(dayKey);
-      setStartKey(dayKey);
-      setEndKey(dayKey);
+      applySelectedDay(dayKey);
       setDayUpdating(false);
     }, 380);
   };
@@ -367,63 +345,29 @@ export default function StatsPage() {
   return (
     <div className="flex flex-col gap-2 -mt-1">
       <div ref={topSectionRef} className="flex flex-col gap-2">
-        <div ref={topRef} className="bg-white rounded-lg shadow px-4 py-2.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
-            <div className="min-w-0">
-              <div className="text-[11px] text-gray-500">Welcome</div>
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="text-[15px] font-semibold truncate">{consumerName}</div>
-                <div className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-semibold">
-                  <FiAward className="text-[13px]" />
-                  #{position}
-                </div>
-              </div>
-              <div className="text-[12px] text-gray-500 truncate">{serviceNo}</div>
-            </div>
-            <div className="sm:text-right">
-              <div className="text-[11px] text-gray-500">Tariff / Category</div>
-              <div className="text-[15px] font-semibold truncate">{category}</div>
-              <div className="text-[12px] text-gray-500 tabular-nums">HT Incomer: {htIncomerKv} kV</div>
-              <div className="text-[12px] text-gray-500 tabular-nums">Selected Day: {selectedDayKey}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-2 items-start">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <StatCard
-              label="Total Cost Saved"
-              value={`Rs. ${stats.totalCostSaved.toLocaleString()}`}
-              icon={<FiDollarSign className="text-lg" />}
-            />
-            <StatCard
-              label="Total Units Saved"
-              value={`${stats.totalUnitsSaved.toLocaleString()} kWh`}
-              icon={<FiActivity className="text-lg" />}
-            />
-            <StatCard
-              label="Morning Peak Hour"
-              value={isCommercial ? "--" : `${stats.morningHour}:00`}
-              hint={isCommercial ? "Commercial: evening-only" : `Rs. ${stats.morningCost.toLocaleString()} | ${stats.morningUnits} kWh`}
-              icon={<FiSun className="text-lg" />}
-              muted={isCommercial}
-            />
-            <StatCard
-              label="Evening Peak Hour"
-              value={`${stats.eveningHour}:00`}
-              hint={`Rs. ${stats.eveningCost.toLocaleString()} | ${stats.eveningUnits} kWh`}
-              icon={<FiMoon className="text-lg" />}
-            />
-          </div>
-
-          <StatsDateRangePicker
-            startKey={startKey}
-            endKey={endKey}
-            onApply={({ startKey: s, endKey: e }) => {
-              setStartKey(s);
-              setEndKey(e);
-              setSelectedDayKey(e || s);
-            }}
+        <div ref={topRef} className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <StatCard
+            label="Total Cost Saved"
+            value={`Rs. ${stats.totalCostSaved.toLocaleString()}`}
+            icon={<span className="text-lg font-semibold leading-none">₹</span>}
+          />
+          <StatCard
+            label="Total Units Saved"
+            value={`${stats.totalUnitsSaved.toLocaleString()} kWh`}
+            icon={<FiActivity className="text-lg" />}
+          />
+          <StatCard
+            label="Morning Peak Hour"
+            value={isCommercial ? "--" : `${stats.morningHour}:00`}
+            hint={isCommercial ? "Commercial: evening-only" : `Rs. ${stats.morningCost.toLocaleString()} | ${stats.morningUnits} kWh`}
+            icon={<FiSun className="text-lg" />}
+            muted={isCommercial}
+          />
+          <StatCard
+            label="Evening Peak Hour"
+            value={`${stats.eveningHour}:00`}
+            hint={`Rs. ${stats.eveningCost.toLocaleString()} | ${stats.eveningUnits} kWh`}
+            icon={<FiMoon className="text-lg" />}
           />
         </div>
       </div>
@@ -447,6 +391,20 @@ export default function StatsPage() {
               delayMs={950}
             />
           </div>
+          <div className="flex items-center justify-center gap-5 mt-1 text-xs text-gray-500 shrink-0 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: TEAL }} />
+              <span>baseline</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: PURPLE }} />
+              <span>actual</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-sm" style={{ background: RED }} />
+              <span>Peak</span>
+            </div>
+          </div>
 
           {dayUpdating ? (
             <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
@@ -456,32 +414,27 @@ export default function StatsPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-2 flex flex-col min-h-0 min-w-0">
-          <div className="text-lg font-semibold text-center py-0.5 mb-0.5 shrink-0">Shift History</div>
-          <div className="overflow-auto flex-1 min-h-0 bg-gray-50 rounded-lg">
-            <table className="min-w-[720px] w-full text-[13px] border border-gray-200 border-collapse bg-white">
+          <div className="flex items-center justify-between mb-1 shrink-0">
+            <div className="text-lg font-semibold py-0.5">Shift History</div>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm hover:bg-indigo-700 transition"
+              aria-label="Expand shift history"
+            >
+              <FiMaximize2 className="text-[16px]" />
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 bg-gray-50 rounded-lg overflow-hidden">
+            <table className="w-full text-[13px] border border-gray-200 border-collapse bg-white">
               <thead className="text-gray-600 bg-[#f6f3ff]">
                 <tr className="text-left">
-                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
                     Date
                   </th>
-                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
-                    Time
+                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
+                    Shifted Units (kWh)
                   </th>
-                  <th colSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
-                    Percentage (%)
-                  </th>
-                  <th colSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">
-                    Value (kWh)
-                  </th>
-                  <th rowSpan={2} className="py-1.5 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
-                    Points
-                  </th>
-                </tr>
-                <tr className="text-left">
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Recorded</th>
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-center border border-gray-200">Shifted</th>
                 </tr>
               </thead>
               <tbody className="tabular-nums">
@@ -492,14 +445,7 @@ export default function StatsPage() {
                     className={`cursor-pointer hover:bg-gray-50 ${r.dayKey === selectedDayKey ? "bg-indigo-50" : "bg-white"}`}
                   >
                     <td className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">{r.dayKey}</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap border border-gray-200">{r.timeLabel}</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentRecorded}%</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.percentShifted}%</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueRecorded}</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-center border border-gray-200">{r.valueShifted}</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">
-                      {r.points}
-                    </td>
+                    <td className="py-1.5 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">{r.valueShifted}</td>
                   </tr>
                 ))}
               </tbody>
@@ -508,6 +454,10 @@ export default function StatsPage() {
           <div className="text-xs text-gray-500 mt-1 shrink-0">Click a row to load that day's stats.</div>
         </div>
       </div>
+
+      {historyOpen ? (
+        <FullHistoryModal rows={historyRows} selectedDayKey={selectedDayKey} onDayClick={onDayClick} onClose={() => setHistoryOpen(false)} />
+      ) : null}
     </div>
   );
 }

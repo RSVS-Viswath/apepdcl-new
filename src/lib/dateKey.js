@@ -19,6 +19,10 @@ export function addDays(date, days) {
   return d;
 }
 
+export function todayDateKey(date = new Date()) {
+  return toDateKey(date);
+}
+
 export function lastNDaysKeys(n, endDate = new Date()) {
   const end = endDate instanceof Date ? endDate : new Date(endDate);
   const keys = [];
@@ -28,9 +32,12 @@ export function lastNDaysKeys(n, endDate = new Date()) {
   return keys;
 }
 
+export function defaultOverviewStartKey() {
+  return toDateKey(addDays(new Date(), -6));
+}
+
 export function defaultOverviewRange() {
   const end = new Date();
-  const start = addDays(end, -6);
-  return { startKey: toDateKey(start), endKey: toDateKey(end) };
+  return { startKey: defaultOverviewStartKey(), endKey: toDateKey(end) };
 }
 

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { FiHelpCircle, FiLogOut, FiSettings, FiUser, FiX } from "react-icons/fi";
+import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { FiArrowLeft, FiHelpCircle, FiLogOut, FiSettings, FiUser, FiX } from "react-icons/fi";
+import SingleDatePicker from "./SingleDatePicker";
+import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
+import { defaultOverviewStartKey, fromDateKey, todayDateKey, toDateKey } from "../lib/dateKey";
+
+const OVERVIEW_TABS = ["All", "Industrial", "Commercial"];
 
 function ModalShell({ title, onClose, children, footer }) {
   useEffect(() => {
@@ -261,12 +266,90 @@ function SettingsModal({ onClose }) {
   );
 }
 
+function OverviewModeToggle({ value, onChange }) {
+  const isControls = value === "controls";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(isControls ? "navigation" : "controls")}
+      className="flex items-center gap-3 rounded-xl bg-white shadow px-3 py-2 text-sm"
+      aria-pressed={isControls}
+      aria-label={`Switch to ${isControls ? "navigation" : "controls"} mode`}
+    >
+      <span className={`font-medium transition ${!isControls ? "text-gray-900" : "text-gray-400"}`}>Navigation</span>
+      <span
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+          isControls ? "bg-indigo-600" : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+            isControls ? "translate-x-5" : "translate-x-1"
+          }`}
+        />
+      </span>
+      <span className={`font-medium transition ${isControls ? "text-gray-900" : "text-gray-400"}`}>Controls</span>
+    </button>
+  );
+}
+
+function OverviewControls({ tab, district, startKey, todayKey, districtOptions, onTabChange, onDistrictChange, onStartKeyChange }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex bg-white rounded-lg shadow p-1 w-fit">
+        {OVERVIEW_TABS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onTabChange(option)}
+            className={`px-3 py-1.5 rounded-md text-[13px] font-medium ${
+              tab === option ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+
+      <label className="flex items-center gap-2 bg-white rounded-lg shadow px-3 h-10 text-sm">
+        <span className="text-gray-500 whitespace-nowrap">District</span>
+        <select
+          value={district}
+          onChange={(e) => onDistrictChange(e.target.value)}
+          className="bg-transparent text-sm font-medium text-gray-900 outline-none"
+        >
+          {districtOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <SingleDatePicker
+        label="Start Date"
+        value={startKey}
+        maxKey={todayKey}
+        onApply={onStartKeyChange}
+        wrapperClassName="w-full sm:w-auto"
+        triggerClassName="flex items-center bg-white rounded-lg shadow px-3 h-10 text-sm"
+        labelClassName="text-gray-500 whitespace-nowrap"
+        valueClassName="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap"
+        dialogTitle="Select Start Date"
+      />
+    </div>
+  );
+}
+
 export default function DashboardHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [overviewMode, setOverviewMode] = useState("navigation");
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
@@ -294,14 +377,27 @@ export default function DashboardHeader() {
     []
   );
 
+  const overviewDistrictOptions = useMemo(
+    () => ["All", ...DISTRICT_OPTIONS.filter((option) => option !== "All Districts")],
+    []
+  );
+  const defaultOverviewStart = useMemo(() => defaultOverviewStartKey(), []);
+  const todayKey = useMemo(() => todayDateKey(), []);
+
   const monitorTab = useMemo(() => {
     const tab = new URLSearchParams(location.search).get("tab");
     return tab === "industrial" ? "industrial" : "commercial";
   }, [location.search]);
+  const consumers = useMemo(() => getAllConsumers(), []);
   const pathParts = useMemo(() => location.pathname.split("/").filter(Boolean), [location.pathname]);
   const consumerScopedPage = pathParts[0] === "stats" || pathParts[0] === "analytics";
   const consumerServiceNo = consumerScopedPage ? decodeURIComponent(pathParts[1] || "") : "";
   const analyticsHref = consumerServiceNo ? `/analytics/${encodeURIComponent(consumerServiceNo)}${location.search}` : "";
+  const isStatsPage = pathParts[0] === "stats";
+  const consumerFallback = useMemo(
+    () => consumers.find((consumer) => consumer.serviceNo === consumerServiceNo),
+    [consumerServiceNo, consumers]
+  );
 
   const isOverviewActive = location.pathname === "/";
   const isMonitorActive = location.pathname === "/monitor";
@@ -309,38 +405,166 @@ export default function DashboardHeader() {
   const isIndustrialActive = isMonitorActive && monitorTab === "industrial";
   const isAnalyticsActive = pathParts[0] === "analytics" || pathParts[0] === "stats";
 
+  useEffect(() => {
+    if (!isOverviewActive) setOverviewMode("navigation");
+  }, [isOverviewActive]);
+
+  const overviewTabParam = searchParams.get("tab");
+  const overviewDistrictParam = searchParams.get("district") || "All";
+  const overviewStartParam = searchParams.get("startKey");
+  const overviewTab = OVERVIEW_TABS.includes(overviewTabParam) ? overviewTabParam : "All";
+  const overviewDistrict = overviewDistrictOptions.includes(overviewDistrictParam) ? overviewDistrictParam : "All";
+  const overviewStartKey =
+    overviewStartParam && !Number.isNaN(fromDateKey(overviewStartParam).getTime())
+      ? overviewStartParam > todayKey
+        ? todayKey
+        : overviewStartParam
+      : defaultOverviewStart;
+  const statsConsumerName = searchParams.get("consumerName") || consumerFallback?.consumerName || "Consumer";
+  const statsDayParam = searchParams.get("day");
+  const statsDayKey =
+    statsDayParam && !Number.isNaN(fromDateKey(statsDayParam).getTime())
+      ? statsDayParam > todayKey
+        ? todayKey
+        : statsDayParam
+      : todayKey;
+
+  const applyOverviewFilters = ({ tab = overviewTab, district = overviewDistrict, startKey = overviewStartKey }) => {
+    const normalizedStartKey =
+      startKey && !Number.isNaN(fromDateKey(startKey).getTime())
+        ? startKey > todayKey
+          ? todayKey
+          : startKey
+        : defaultOverviewStart;
+
+    const next = new URLSearchParams(searchParams);
+    if (tab === "All") next.delete("tab");
+    else next.set("tab", tab);
+
+    if (district === "All") next.delete("district");
+    else next.set("district", district);
+
+    if (normalizedStartKey === defaultOverviewStart) next.delete("startKey");
+    else next.set("startKey", normalizedStartKey);
+
+    setSearchParams(next);
+  };
+  const applyStatsDay = (dayKey) => {
+    const normalizedDay =
+      dayKey && !Number.isNaN(fromDateKey(dayKey).getTime())
+        ? dayKey > todayKey
+          ? todayKey
+          : dayKey
+        : todayKey;
+    const next = new URLSearchParams(searchParams);
+    if (normalizedDay === todayKey) next.delete("day");
+    else next.set("day", normalizedDay);
+    setSearchParams(next);
+  };
+
   const accountName = "APEPDCL";
 
   return (
     <>
       <header className="sticky top-0 z-50 bg-gray-50/90 backdrop-blur">
-        <div className="w-full px-4 2xl:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="w-full px-4 2xl:px-8 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img
-              src="https://ap.elementsenergies.com/images/eelogo.webp"
-              alt="Logo"
-              className="h-9 w-auto object-contain shrink-0"
-            />
-            <div className="font-semibold text-gray-900 truncate">APEPDCL Dashboard</div>
+            {!isOverviewActive ? (
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="w-10 h-10 rounded-lg border border-gray-300 bg-gray-50 flex items-center justify-center shadow-sm hover:bg-white shrink-0"
+                aria-label="Back to overview"
+              >
+                <FiArrowLeft className="text-lg text-gray-700" />
+              </button>
+            ) : null}
+            {isOverviewActive ? (
+              <img
+                src="https://ap.elementsenergies.com/images/eelogo.webp"
+                alt="Logo"
+                className="h-9 w-auto object-contain shrink-0"
+              />
+            ) : (
+              <button type="button" onClick={() => navigate("/")} className="shrink-0" aria-label="Go to overview">
+                <img
+                  src="https://ap.elementsenergies.com/images/eelogo.webp"
+                  alt="Logo"
+                  className="h-9 w-auto object-contain shrink-0"
+                />
+              </button>
+            )}
+            {isStatsPage ? (
+              <div className="min-w-0">
+                <div className="font-semibold text-gray-900 truncate">{statsConsumerName}</div>
+                <div className="text-xs text-gray-500 tabular-nums truncate">{consumerServiceNo}</div>
+              </div>
+            ) : (
+              <div className="font-semibold text-gray-900 truncate">APEPDCL Dashboard</div>
+            )}
           </div>
 
-          <nav className="flex items-center gap-1">
-            <NavLink to="/" className={navClass(isOverviewActive)}>
-              Overview
-            </NavLink>
-            <NavLink to="/monitor?tab=commercial" className={navClass(isConsumerActive)}>
-              Commercial
-            </NavLink>
-            <NavLink to="/monitor?tab=industrial" className={navClass(isIndustrialActive)}>
-              Industrial
-            </NavLink>
-            {consumerScopedPage && consumerServiceNo ? (
-              <NavLink to={analyticsHref} className={navClass(isAnalyticsActive)}>
-                Analytics
-              </NavLink>
-            ) : null}
+          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-2 w-full xl:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+              {isOverviewActive ? (
+                <OverviewModeToggle value={overviewMode} onChange={setOverviewMode} />
+              ) : null}
 
-            <div className="relative ml-1">
+              <div className="flex flex-wrap items-center gap-1 min-w-0">
+                {isStatsPage ? (
+                  <>
+                    <SingleDatePicker
+                      label="Start Date"
+                      value={statsDayKey}
+                      maxKey={todayKey}
+                      onApply={applyStatsDay}
+                      wrapperClassName="w-full sm:w-auto"
+                      triggerClassName="flex items-center bg-white rounded-lg shadow px-3 h-10 text-sm"
+                      labelClassName="text-gray-500 whitespace-nowrap"
+                      valueClassName="text-sm font-medium text-gray-900 tabular-nums whitespace-nowrap"
+                      dialogTitle="Select Start Date"
+                    />
+                    <NavLink
+                      to={analyticsHref}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 transition"
+                    >
+                      Analytics
+                    </NavLink>
+                  </>
+                ) : isOverviewActive && overviewMode === "controls" ? (
+                  <OverviewControls
+                    tab={overviewTab}
+                    district={overviewDistrict}
+                    startKey={overviewStartKey}
+                    todayKey={todayKey}
+                    districtOptions={overviewDistrictOptions}
+                    onTabChange={(tab) => applyOverviewFilters({ tab })}
+                    onDistrictChange={(district) => applyOverviewFilters({ district })}
+                    onStartKeyChange={(startKey) => applyOverviewFilters({ startKey })}
+                  />
+                ) : (
+                  <>
+                    <NavLink to="/" className={navClass(isOverviewActive)}>
+                      Overview
+                    </NavLink>
+                    <NavLink to="/monitor?tab=commercial" className={navClass(isConsumerActive)}>
+                      Commercial
+                    </NavLink>
+                    <NavLink to="/monitor?tab=industrial" className={navClass(isIndustrialActive)}>
+                      Industrial
+                    </NavLink>
+                    {consumerScopedPage && consumerServiceNo ? (
+                      <NavLink to={analyticsHref} className={navClass(isAnalyticsActive)}>
+                        Analytics
+                      </NavLink>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {!isStatsPage ? (
+              <div className="relative lg:ml-1 self-end lg:self-auto">
               <button
                 ref={buttonRef}
                 type="button"
@@ -407,7 +631,8 @@ export default function DashboardHeader() {
                   </button>
                 </div>
               ) : null}
-            </div>
+              </div>
+            ) : null}
           </nav>
         </div>
       </header>
