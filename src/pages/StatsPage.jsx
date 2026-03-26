@@ -4,12 +4,21 @@ import Chart from "react-apexcharts";
 import { getAllConsumers } from "../lib/consumers";
 import { fromDateKey, lastNDaysKeys, toDateKey } from "../lib/dateKey";
 import { seededInt, seededNumber } from "../lib/seeded";
-import { FiActivity, FiMaximize2, FiMoon, FiSun, FiX } from "react-icons/fi";
+import { getTariffBand, getTariffRate } from "../lib/tariffs";
+import { FiActivity, FiClock, FiMaximize2, FiMoon, FiSun, FiX } from "react-icons/fi";
 
 // Match legacy client theme graph palette
 const TEAL = "#13C4A9";
 const PURPLE = "#6A42B2";
 const RED = "#ef4444";
+
+function formatHourLabel(hour) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function formatConsumption(value) {
+  return `${Number(value || 0).toFixed(2)} kWh`;
+}
 
 function FullHistoryModal({ rows, selectedDayKey, onDayClick, onClose }) {
   return (
@@ -102,12 +111,16 @@ function SequentialAreaChart({ options, baseline, actual, height, delayMs = 850 
   const [showActual, setShowActual] = useState(false);
 
   useEffect(() => {
+    setShowActual(false);
     const id = window.setTimeout(() => setShowActual(true), delayMs);
     return () => window.clearTimeout(id);
   }, [delayMs]);
 
   const series = useMemo(
-    () => [{ name: "baseline", data: baseline }, ...(showActual ? [{ name: "actual", data: actual }] : [])],
+    () => [
+      { name: "Baseline Consumption", data: baseline },
+      ...(showActual ? [{ name: "Actual Consumption", data: actual }] : []),
+    ],
     [actual, baseline, showActual]
   );
 
@@ -116,23 +129,27 @@ function SequentialAreaChart({ options, baseline, actual, height, delayMs = 850 
 
 function buildHourlySeries(serviceNo, dayKey, { includeMorning, includeEvening }) {
   const baseSeed = `${serviceNo}|${dayKey}`;
+  const baselineTemplate = [0, 1, 13, 11, 12, 19, 26, 0, 20, 8, 38, 14, 24, 10, 12, 0, 0, 37, 44, 42, 15, 10, 13, 9];
+  const actualTemplate = [13, 5, 12, 13, 5, 7, 14, 19, 14, 9, 18, 17, 21, 15, 10, 14, 13, 15, 15, 14, 13, 9, 13, 15];
 
-  const isPeakHour = (h) => {
-    const morning = includeMorning && h >= 6 && h <= 9;
-    const evening = includeEvening && h >= 18 && h <= 21;
-    return morning || evening;
-  };
-
-  const baseline = Array.from({ length: 24 }, (_, h) => {
-    const v = seededNumber(`${baseSeed}|base|${h}`, 38, 110);
-    const peakBoost = isPeakHour(h) ? 1.22 : 1;
-    return Math.round(v * peakBoost);
+  const baseline = baselineTemplate.map((value, h) => {
+    const variance = seededNumber(`${baseSeed}|base|${h}`, -1.6, 1.6);
+    const morningScale = includeMorning || h < 6 || h > 9 ? 1 : 0.36;
+    const eveningScale = includeEvening || h < 18 || h > 21 ? 1 : 0.48;
+    return {
+      x: h,
+      y: Math.max(0, Math.min(48.5, Number((value * morningScale * eveningScale + variance).toFixed(2)))),
+    };
   });
 
-  const actual = baseline.map((b, h) => {
-    const factor = seededNumber(`${baseSeed}|act|${h}`, 0.78, 0.97);
-    const extraShift = isPeakHour(h) ? seededNumber(`${baseSeed}|sh|${h}`, 0.85, 0.95) : 1;
-    return Math.max(0, Math.round(b * factor * extraShift));
+  const actual = actualTemplate.map((value, h) => {
+    const variance = seededNumber(`${baseSeed}|act|${h}`, -1.2, 1.2);
+    const shiftGain = h >= 18 && h <= 21 ? seededNumber(`${baseSeed}|shift|${h}`, -1.1, 0.4) : 0;
+    const morningScale = includeMorning || h < 6 || h > 9 ? 1 : 0.74;
+    return {
+      x: h,
+      y: Math.max(0, Math.min(24, Number((value * morningScale + variance + shiftGain).toFixed(2)))),
+    };
   });
 
   return { baseline, actual };
@@ -167,43 +184,35 @@ export default function StatsPage() {
   const [dayUpdating, setDayUpdating] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const topRef = useRef(null);
-  const topSectionRef = useRef(null);
-  const [bottomHeight, setBottomHeight] = useState(null);
+  const [desktopPanelHeight, setDesktopPanelHeight] = useState(null);
   const chartWrapRef = useRef(null);
   const [chartHeight, setChartHeight] = useState(320);
 
   useEffect(() => {
-    const calcBottomHeight = () => {
+    const calcDesktopPanelHeight = () => {
       const isDesktop = window.matchMedia ? window.matchMedia("(min-width: 1024px)").matches : window.innerWidth >= 1024;
       if (!isDesktop) {
-        setBottomHeight(null);
+        setDesktopPanelHeight(null);
         setChartHeight(320);
         return;
       }
 
       const headerHeight = document.querySelector("header")?.offsetHeight || 0;
-      const topHeight = topSectionRef.current?.offsetHeight || 0;
       const mainPadding = 24; // StatsPage slightly offsets DashboardLayout padding usage
-      const gap = 8; // StatsPage: gap-2 between top and bottom sections
-
-      const available = Math.floor(window.innerHeight - headerHeight - mainPadding - topHeight - gap);
-      setBottomHeight(Math.max(260, available));
+      const available = Math.floor(window.innerHeight - headerHeight - mainPadding);
+      setDesktopPanelHeight(Math.max(360, available));
     };
 
-    calcBottomHeight();
-    window.addEventListener("resize", calcBottomHeight);
-
-    const ro = new ResizeObserver(() => calcBottomHeight());
-    if (topSectionRef.current) ro.observe(topSectionRef.current);
+    calcDesktopPanelHeight();
+    window.addEventListener("resize", calcDesktopPanelHeight);
 
     return () => {
-      window.removeEventListener("resize", calcBottomHeight);
-      ro.disconnect();
+      window.removeEventListener("resize", calcDesktopPanelHeight);
     };
   }, []);
 
   useEffect(() => {
-    if (bottomHeight == null) return undefined;
+    if (desktopPanelHeight == null) return undefined;
     const el = chartWrapRef.current;
     if (!el) return undefined;
 
@@ -216,7 +225,7 @@ export default function StatsPage() {
 
     ro.observe(el);
     return () => ro.disconnect();
-  }, [bottomHeight]);
+  }, [desktopPanelHeight]);
 
   const historyRows = useMemo(() => {
     const endDate = fromDateKey(selectedDayKey);
@@ -252,8 +261,8 @@ export default function StatsPage() {
     const totalCostSaved = seededInt(`${seed}|tcs`, 12000, 98000);
     const totalUnitsSaved = seededInt(`${seed}|tus`, 180, 2200);
 
-    const morningHour = seededInt(`${seed}|mh`, 6, 9);
-    const eveningHour = seededInt(`${seed}|eh`, 18, 21);
+    const morningHour = 7;
+    const eveningHour = 20;
 
     const morningUnits = seededInt(`${seed}|mu`, 12, 180);
     const eveningUnits = seededInt(`${seed}|eu`, 12, 200);
@@ -277,15 +286,18 @@ export default function StatsPage() {
     () => buildHourlySeries(serviceNo, selectedDayKey, peakWindow),
     [peakWindow, serviceNo, selectedDayKey]
   );
+  const activePeakHour = 20;
+  const hoursLeftToReduce = 9;
 
   const chartOptions = useMemo(() => {
-    const categories = Array.from({ length: 24 }, (_, h) => h);
-    const peakLines = peakWindow.includeMorning ? [6, 9, 18, 21] : [18, 21];
+    const actualPeakIndex = series.actual.findIndex((point) => point.x === activePeakHour);
     return {
       chart: {
         type: "area",
         toolbar: { show: false },
         zoom: { enabled: false },
+        parentHeightOffset: 0,
+        background: "transparent",
         animations: {
           enabled: true,
           easing: "easeinout",
@@ -296,28 +308,122 @@ export default function StatsPage() {
       },
       dataLabels: { enabled: false },
       stroke: { curve: "smooth", width: 2 },
-      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.55, opacityTo: 0.05, stops: [0, 100] } },
-      xaxis: { categories, title: { text: "Hours", style: { fontWeight: 400 } } },
-      yaxis: { title: { text: "Consumption (kWh)", style: { fontWeight: 400 } } },
+      fill: {
+        type: "gradient",
+        gradient: { shadeIntensity: 1, opacityFrom: 0.48, opacityTo: 0.03, stops: [0, 100] },
+      },
+      grid: {
+        borderColor: "#d8dde6",
+        strokeDashArray: 0,
+        padding: { left: 4, right: 18, top: 8, bottom: 0 },
+      },
+      states: {
+        hover: { filter: { type: "none" } },
+        active: { filter: { type: "none" } },
+      },
+      markers: {
+        size: 0,
+        strokeColors: "#ffffff",
+        strokeWidth: 3,
+        hover: { sizeOffset: 6 },
+        discrete:
+          actualPeakIndex >= 0
+            ? [
+                {
+                  seriesIndex: 1,
+                  dataPointIndex: actualPeakIndex,
+                  fillColor: PURPLE,
+                  strokeColor: "#ffffff",
+                  size: 8,
+                },
+              ]
+            : [],
+      },
+      xaxis: {
+        type: "numeric",
+        min: 0,
+        max: 23,
+        tickAmount: 23,
+        axisBorder: { color: "#d8dde6" },
+        axisTicks: { color: "#d8dde6" },
+        title: { text: "Hours", style: { fontWeight: 400 } },
+        labels: {
+          formatter: (value) => String(Math.round(value)).padStart(2, "0"),
+        },
+        tooltip: { enabled: false },
+      },
+      yaxis: {
+        min: 0,
+        max: 50,
+        tickAmount: 5,
+        decimalsInFloat: 2,
+        title: { text: "Consumption (kWh)", style: { fontWeight: 400 } },
+        labels: {
+          formatter: (value) => Number(value).toFixed(2),
+        },
+      },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        custom: ({ series: tooltipSeries, dataPointIndex, w }) => {
+          const hour = Math.round(w.globals.seriesX?.[0]?.[dataPointIndex] ?? dataPointIndex);
+          const tariffBand = getTariffBand(hour, isCommercial);
+          const tariffRate = getTariffRate(hour, isCommercial);
+          const baselineValue = Number(tooltipSeries?.[0]?.[dataPointIndex] ?? 0);
+          const actualValue = Number(tooltipSeries?.[1]?.[dataPointIndex] ?? 0);
+
+          return `
+            <div style="min-width:292px;background:#ffffff;border:1px solid #d6dde7;border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,0.12);overflow:hidden;">
+              <div style="padding:12px 16px;background:#eef2f6;border-bottom:1px solid #d6dde7;font-size:14px;color:#0f172a;">
+                ${formatHourLabel(hour)} &mdash; ${tariffBand} Rs.${tariffRate.toFixed(1)}/unit
+              </div>
+              <div style="padding:14px 16px;display:grid;gap:14px;">
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#111827;">
+                  <span style="width:16px;height:16px;border-radius:999px;background:${TEAL};display:inline-block;"></span>
+                  <span>Baseline Consumption:</span>
+                  <strong>${formatConsumption(baselineValue)}</strong>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:14px;color:#111827;">
+                  <span style="width:16px;height:16px;border-radius:999px;background:${PURPLE};display:inline-block;"></span>
+                  <span>Actual Consumption:</span>
+                  <strong>${formatConsumption(actualValue)}</strong>
+                </div>
+              </div>
+            </div>
+          `;
+        },
+      },
       legend: { show: false },
       colors: [TEAL, PURPLE],
       annotations: {
-        xaxis: peakLines.reduce((ranges, x, index, arr) => {
-          if (index % 2 !== 0) return ranges;
-          const end = arr[index + 1];
-          if (end == null) return ranges;
-          ranges.push({
-            x,
-            x2: end,
+        xaxis: [
+          ...(peakWindow.includeMorning
+            ? [
+                {
+                  x: 6,
+                  x2: 9,
+                  fillColor: RED,
+                  opacity: 0.12,
+                  borderColor: "transparent",
+                },
+              ]
+            : []),
+          {
+            x: 18,
+            x2: 21,
             fillColor: RED,
             opacity: 0.12,
             borderColor: "transparent",
-          });
-          return ranges;
-        }, []),
+          },
+          {
+            x: activePeakHour,
+            strokeDashArray: 4,
+            borderColor: "#9aa4b2",
+          },
+        ],
       },
     };
-  }, [peakWindow.includeMorning]);
+  }, [activePeakHour, isCommercial, peakWindow.includeMorning, series.actual]);
 
   const applySelectedDay = (dayKey) => {
     const normalizedDay =
@@ -343,13 +449,16 @@ export default function StatsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-2 -mt-1">
-      <div ref={topSectionRef} className="flex flex-col gap-2">
+    <div
+      className="grid grid-cols-1 lg:grid-cols-[2.25fr_0.75fr] gap-2 items-stretch -mt-1"
+      style={desktopPanelHeight ? { height: desktopPanelHeight } : undefined}
+    >
+      <div className="flex flex-col gap-2 min-h-0 min-w-0">
         <div ref={topRef} className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           <StatCard
             label="Total Cost Saved"
             value={`Rs. ${stats.totalCostSaved.toLocaleString()}`}
-            icon={<span className="text-lg font-semibold leading-none">₹</span>}
+            icon={<span className="text-sm font-semibold leading-none">Rs</span>}
           />
           <StatCard
             label="Total Units Saved"
@@ -370,18 +479,19 @@ export default function StatsPage() {
             icon={<FiMoon className="text-lg" />}
           />
         </div>
-      </div>
 
-      <div
-        className="grid grid-cols-1 lg:grid-cols-[2.25fr_0.75fr] gap-2 items-stretch"
-        style={bottomHeight ? { height: bottomHeight } : undefined}
-      >
-        <div className="bg-white rounded-lg shadow p-2 relative flex flex-col min-h-0 min-w-0">
+        <div className="bg-white rounded-lg shadow p-2 relative flex flex-col min-h-0 min-w-0 flex-1">
           <div className="flex items-center justify-between mb-1 shrink-0">
             <div className="text-sm font-semibold">Hourly Consumption Pattern</div>
-            <div className="text-xs text-gray-500 tabular-nums">{selectedDayKey}</div>
+            <div className="text-right">
+              <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#7c22d3]">
+                <FiClock className="text-[12px]" />
+                <span>{hoursLeftToReduce} hours left to reduce</span>
+              </div>
+              <div className="text-[11px] text-gray-500 tabular-nums mt-0.5">{selectedDayKey}</div>
+            </div>
           </div>
-          <div ref={chartWrapRef} className="flex-1 min-h-0 overflow-hidden">
+          <div ref={chartWrapRef} className="relative flex-1 min-h-0 overflow-hidden">
             <SequentialAreaChart
               key={`${serviceNo}|${selectedDayKey}|${peakWindow.includeMorning ? "M+E" : "E"}`}
               options={chartOptions}
@@ -390,19 +500,29 @@ export default function StatsPage() {
               height={chartHeight}
               delayMs={950}
             />
+            {peakWindow.includeMorning ? (
+              <div
+                className="pointer-events-none absolute bottom-11 rounded-[4px] bg-[#6b46c1] px-2 py-0.5 text-[11px] font-medium text-white shadow-sm"
+                style={{ left: `${(7.5 / 23) * 100}%`, transform: "translateX(-50%)" }}
+              >
+                Morning Peak
+              </div>
+            ) : null}
+            <div
+              className="pointer-events-none absolute bottom-11 rounded-[4px] bg-[#6b46c1] px-2 py-0.5 text-[11px] font-medium text-white shadow-sm"
+              style={{ left: `${(19.5 / 23) * 100}%`, transform: "translateX(-50%)" }}
+            >
+              Evening Peak
+            </div>
           </div>
-          <div className="flex items-center justify-center gap-5 mt-1 text-xs text-gray-500 shrink-0 flex-wrap">
+          <div className="flex items-center justify-center gap-7 mt-1 text-xs text-gray-500 shrink-0 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: TEAL }} />
-              <span>baseline</span>
+              <span>Baseline Consumption</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: PURPLE }} />
-              <span>actual</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-sm" style={{ background: RED }} />
-              <span>Peak</span>
+              <span>Actual Consumption</span>
             </div>
           </div>
 
@@ -412,47 +532,47 @@ export default function StatsPage() {
             </div>
           ) : null}
         </div>
+      </div>
 
-        <div className="bg-white rounded-lg shadow p-2 flex flex-col min-h-0 min-w-0">
-          <div className="flex items-center justify-between mb-1 shrink-0">
-            <div className="text-lg font-semibold py-0.5">Shift History</div>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm hover:bg-indigo-700 transition"
-              aria-label="Expand shift history"
-            >
-              <FiMaximize2 className="text-[16px]" />
-            </button>
-          </div>
-          <div className="flex-1 min-h-0 bg-gray-50 rounded-lg overflow-hidden">
-            <table className="w-full text-[13px] border border-gray-200 border-collapse bg-white">
-              <thead className="text-gray-600 bg-[#f6f3ff]">
-                <tr className="text-left">
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
-                    Date
-                  </th>
-                  <th className="py-1.5 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
-                    Shifted Units (kWh)
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="tabular-nums">
-                {historyRows.map((r) => (
-                  <tr
-                    key={r.dayKey}
-                    onClick={() => onDayClick(r.dayKey)}
-                    className={`cursor-pointer hover:bg-gray-50 ${r.dayKey === selectedDayKey ? "bg-indigo-50" : "bg-white"}`}
-                  >
-                    <td className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">{r.dayKey}</td>
-                    <td className="py-1.5 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">{r.valueShifted}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="text-xs text-gray-500 mt-1 shrink-0">Click a row to load that day's stats.</div>
+      <div className="bg-white rounded-lg shadow p-2 flex flex-col min-h-0 min-w-0">
+        <div className="flex items-center justify-between mb-1 shrink-0">
+          <div className="text-lg font-semibold py-0.5">Shift History</div>
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm hover:bg-indigo-700 transition"
+            aria-label="Expand shift history"
+          >
+            <FiMaximize2 className="text-[16px]" />
+          </button>
         </div>
+        <div className="flex-1 min-h-0 bg-gray-50 rounded-lg overflow-auto">
+          <table className="w-full text-[13px] border border-gray-200 border-collapse bg-white">
+            <thead className="text-gray-600 bg-[#f6f3ff] sticky top-0 z-10">
+              <tr className="text-left">
+                <th className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
+                  Date
+                </th>
+                <th className="py-1.5 px-2 whitespace-nowrap font-medium text-right border border-gray-200">
+                  Shifted Units (kWh)
+                </th>
+              </tr>
+            </thead>
+            <tbody className="tabular-nums">
+              {historyRows.map((r) => (
+                <tr
+                  key={r.dayKey}
+                  onClick={() => onDayClick(r.dayKey)}
+                  className={`cursor-pointer hover:bg-gray-50 ${r.dayKey === selectedDayKey ? "bg-indigo-50" : "bg-white"}`}
+                >
+                  <td className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">{r.dayKey}</td>
+                  <td className="py-1.5 px-2 whitespace-nowrap text-right font-semibold text-[#6A42B2] border border-gray-200">{r.valueShifted}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="text-xs text-gray-500 mt-1 shrink-0">Click a row to load that day's stats.</div>
       </div>
 
       {historyOpen ? (

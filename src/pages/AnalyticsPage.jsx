@@ -6,35 +6,18 @@ import SingleDatePicker from "../components/SingleDatePicker";
 import { addDays, fromDateKey, toDateKey } from "../lib/dateKey";
 import { getAllConsumers } from "../lib/consumers";
 import { seededNumber } from "../lib/seeded";
+import { getTariffBand, getTariffRate, TARIFF_BANDS } from "../lib/tariffs";
 
 const PAGE_BG = "#f3f4f6";
 const CARD_BG = "#ffffff";
 const PEAK_COLOR = "#f4827a";
-const PEAK_TWO_COLOR = "#ef9aa3";
 const NORMAL_COLOR = "#f8b44e";
 const OFFPEAK_COLOR = "#80c583";
 const WEEKLY_BAR = "#6b5fe4";
 
-function hourlyBandForIndustrial(hour) {
-  if (hour >= 6 && hour <= 9) return "Peak-1";
-  if (hour >= 18 && hour <= 21) return "Peak-2";
-  if ((hour >= 15 && hour <= 17) || hour === 22 || hour === 23) return "Normal";
-  return "Off-Peak";
-}
-
-function hourlyBandForCommercial(hour) {
-  return hour >= 18 && hour <= 21 ? "Peak" : "Off-Peak";
-}
-
-function displayBand(label) {
-  return label.startsWith("Peak") ? "Peak" : label;
-}
-
 function bandColor(label) {
-  if (label === "Peak-1") return PEAK_COLOR;
-  if (label === "Peak-2") return PEAK_TWO_COLOR;
-  if (label === "Peak") return PEAK_COLOR;
-  if (label === "Normal") return NORMAL_COLOR;
+  if (label === TARIFF_BANDS.PEAK) return PEAK_COLOR;
+  if (label === TARIFF_BANDS.NORMAL) return NORMAL_COLOR;
   return OFFPEAK_COLOR;
 }
 
@@ -100,18 +83,19 @@ export default function AnalyticsPage() {
   const hourlyRows = useMemo(
     () =>
       Array.from({ length: 24 }, (_, hour) => {
-        const tariff = isCommercial ? hourlyBandForCommercial(hour) : hourlyBandForIndustrial(hour);
+        const tariff = getTariffBand(hour, isCommercial);
+        const rate = getTariffRate(hour, isCommercial);
         const value =
-          tariff === "Peak" || tariff === "Peak-1" || tariff === "Peak-2"
+          tariff === TARIFF_BANDS.PEAK
             ? seededNumber(`${analyticsSeed}|hour|${hour}`, 18, 48)
-            : tariff === "Normal"
+            : tariff === TARIFF_BANDS.NORMAL
               ? seededNumber(`${analyticsSeed}|hour|${hour}`, 8, 34)
               : seededNumber(`${analyticsSeed}|hour|${hour}`, 1, 32);
 
         return {
           hour,
           tariff,
-          displayTariff: displayBand(tariff),
+          rate,
           kwh: Math.round(value * 100) / 100,
         };
       }),
@@ -137,16 +121,18 @@ export default function AnalyticsPage() {
   const pfAvg = useMemo(() => seededNumber(`${analyticsSeed}|pf-avg`, 0.82, 0.97), [analyticsSeed]);
 
   const tariffSplit = useMemo(() => {
-    const totals = isCommercial
-      ? { Peak: 0, "Off-Peak": 0 }
-      : { Peak: 0, Normal: 0, "Off-Peak": 0 };
+    const totals = {
+      [TARIFF_BANDS.PEAK]: 0,
+      [TARIFF_BANDS.NORMAL]: 0,
+      [TARIFF_BANDS.OFF_PEAK]: 0,
+    };
 
     hourlyRows.forEach((row) => {
-      totals[row.displayTariff] += row.kwh;
+      totals[row.tariff] += row.kwh;
     });
 
     return totals;
-  }, [hourlyRows, isCommercial]);
+  }, [hourlyRows]);
 
   const weeklyData = useMemo(() => {
     const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -206,7 +192,7 @@ export default function AnalyticsPage() {
         tooltip: {
           y: {
             formatter: (value, { dataPointIndex }) =>
-              `${hourlyRows[dataPointIndex]?.displayTariff || ""} - ${Number(value).toFixed(2)} kWh`,
+              `${hourlyRows[dataPointIndex]?.tariff || ""} - Rs.${Number(hourlyRows[dataPointIndex]?.rate || 0).toFixed(1)}/unit - ${Number(value).toFixed(2)} kWh`,
           },
         },
         colors: hourlyRows.map((row) => bandColor(row.tariff)),
@@ -389,12 +375,10 @@ export default function AnalyticsPage() {
               <span className="w-3 h-3 rounded-full" style={{ background: PEAK_COLOR }} />
               Peak
             </div>
-            {!isCommercial ? (
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: NORMAL_COLOR }} />
-                Normal
-              </div>
-            ) : null}
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: NORMAL_COLOR }} />
+              Normal
+            </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: OFFPEAK_COLOR }} />
               Off-Peak
