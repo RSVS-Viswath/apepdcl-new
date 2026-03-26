@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
+import { getAllConsumers } from "../lib/consumers";
 
 function Pagination({ activePage, onChange }) {
   const pages = [1, 2, 3, 4, 5];
@@ -37,12 +37,12 @@ export default function MonitorPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const districtParam = searchParams.get("district") || "All";
   const selectedTab =
     tabParam === "industrial" ? "industrial" : tabParam === "commercial" ? "commercial" : "all";
   const recordsRef = useRef(null);
 
   const [serviceSearch, setServiceSearch] = useState("");
-  const [district, setDistrict] = useState("All Districts");
   const [activePage, setActivePage] = useState(1);
   const [isRecordsScrolled, setIsRecordsScrolled] = useState(false);
 
@@ -58,16 +58,20 @@ export default function MonitorPage() {
 
     const search = serviceSearch.trim().toLowerCase();
     const searched = search
-      ? tabFiltered.filter((r) => String(r.serviceNo).toLowerCase().includes(search))
+      ? tabFiltered.filter(
+          (r) =>
+            String(r.serviceNo).toLowerCase().includes(search) ||
+            String(r.consumerName).toLowerCase().includes(search)
+        )
       : tabFiltered;
 
     const districtFiltered =
-      district === "All Districts"
+      districtParam === "All"
         ? searched
-        : searched.filter((r) => String(r.serviceNo).slice(0, 3).toUpperCase() === district);
+        : searched.filter((r) => String(r.serviceNo).slice(0, 3).toUpperCase() === districtParam);
 
     return districtFiltered;
-  }, [all, district, selectedTab, serviceSearch]);
+  }, [all, districtParam, selectedTab, serviceSearch]);
 
   const onRowClick = (r) => {
     const qs = new URLSearchParams({
@@ -102,29 +106,14 @@ export default function MonitorPage() {
         <div className="flex flex-col lg:flex-row gap-2 lg:items-end lg:justify-between">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
             <label className="grid gap-0">
-              <span className="text-[11px] text-gray-500">Search by Service No</span>
+              <span className="text-[11px] text-gray-500">Search by Service Number or Consumer Name</span>
               <input
                 value={serviceSearch}
                 onChange={(e) => setServiceSearch(e.target.value)}
-                placeholder="e.g. AKP010"
+                placeholder="Service No or consumer name"
                 className="border rounded-lg px-3 py-1.5 text-sm w-full sm:w-64"
                 type="text"
               />
-            </label>
-
-            <label className="grid gap-0">
-              <span className="text-[11px] text-gray-500">District</span>
-              <select
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                className="border rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 bg-white"
-              >
-                {DISTRICT_OPTIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
             </label>
           </div>
 

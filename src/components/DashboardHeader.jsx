@@ -342,6 +342,48 @@ function OverviewControls({ tab, district, startKey, todayKey, districtOptions, 
   );
 }
 
+function MonitorControls({ tab, district, districtOptions, onTabChange, onDistrictChange }) {
+  const tabs = [
+    { key: "all", label: "All" },
+    { key: "industrial", label: "Industrial" },
+    { key: "commercial", label: "Commercial" },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex bg-white rounded-lg shadow p-1 w-fit">
+        {tabs.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onTabChange(option.key)}
+            className={`px-3 py-1.5 rounded-md text-[13px] font-medium ${
+              tab === option.key ? "bg-indigo-600 text-white" : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <label className="flex items-center gap-2 bg-white rounded-lg shadow px-3 h-10 text-sm">
+        <span className="text-gray-500 whitespace-nowrap">District</span>
+        <select
+          value={district}
+          onChange={(e) => onDistrictChange(e.target.value)}
+          className="bg-transparent text-sm font-medium text-gray-900 outline-none"
+        >
+          {districtOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
 export default function DashboardHeader() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -380,6 +422,7 @@ export default function DashboardHeader() {
     () => ["All", ...DISTRICT_OPTIONS.filter((option) => option !== "All Districts")],
     []
   );
+  const monitorDistrictOptions = overviewDistrictOptions;
   const defaultOverviewStart = useMemo(() => defaultOverviewStartKey(), []);
   const todayKey = useMemo(() => todayDateKey(), []);
 
@@ -409,8 +452,10 @@ export default function DashboardHeader() {
   const overviewTabParam = searchParams.get("tab");
   const overviewDistrictParam = searchParams.get("district") || "All";
   const overviewStartParam = searchParams.get("startKey");
+  const monitorDistrictParam = searchParams.get("district") || "All";
   const overviewTab = OVERVIEW_TABS.includes(overviewTabParam) ? overviewTabParam : "All";
   const overviewDistrict = overviewDistrictOptions.includes(overviewDistrictParam) ? overviewDistrictParam : "All";
+  const monitorDistrict = monitorDistrictOptions.includes(monitorDistrictParam) ? monitorDistrictParam : "All";
   const overviewStartKey =
     overviewStartParam && !Number.isNaN(fromDateKey(overviewStartParam).getTime())
       ? overviewStartParam > todayKey
@@ -458,6 +503,16 @@ export default function DashboardHeader() {
     else next.set("day", normalizedDay);
     setSearchParams(next);
   };
+  const applyMonitorFilters = ({ tab = monitorTab, district = monitorDistrict }) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "all") next.delete("tab");
+    else next.set("tab", tab);
+
+    if (district === "All") next.delete("district");
+    else next.set("district", district);
+
+    setSearchParams(next);
+  };
 
   const accountName = "APEPDCL";
 
@@ -466,7 +521,7 @@ export default function DashboardHeader() {
       <header className="sticky top-0 z-50 bg-gray-50/90 backdrop-blur">
         <div className="w-full px-4 2xl:px-8 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            {!isOverviewActive ? (
+            {!isOverviewActive && !isMonitorActive ? (
               <button
                 type="button"
                 onClick={() => navigate("/")}
@@ -507,6 +562,10 @@ export default function DashboardHeader() {
                 <OverviewModeToggle isListMode={false} onToggle={() => navigate("/monitor")} />
               ) : null}
 
+              {isMonitorActive ? (
+                <OverviewModeToggle isListMode onToggle={() => navigate("/")} />
+              ) : null}
+
               <div className="flex flex-wrap items-center gap-1 min-w-0">
                 {isStatsPage ? (
                   <>
@@ -539,11 +598,21 @@ export default function DashboardHeader() {
                     onDistrictChange={(district) => applyOverviewFilters({ district })}
                     onStartKeyChange={(startKey) => applyOverviewFilters({ startKey })}
                   />
+                ) : isMonitorActive ? (
+                  <MonitorControls
+                    tab={monitorTab}
+                    district={monitorDistrict}
+                    districtOptions={monitorDistrictOptions}
+                    onTabChange={(tab) => applyMonitorFilters({ tab })}
+                    onDistrictChange={(district) => applyMonitorFilters({ district })}
+                  />
                 ) : (
                   <>
-                    <NavLink to="/" className={navClass(isOverviewActive)}>
-                      Overview
-                    </NavLink>
+                    {!isMonitorActive ? (
+                      <NavLink to="/" className={navClass(isOverviewActive)}>
+                        Overview
+                      </NavLink>
+                    ) : null}
                     <NavLink to="/monitor?tab=commercial" className={navClass(isConsumerActive)}>
                       Commercial
                     </NavLink>
