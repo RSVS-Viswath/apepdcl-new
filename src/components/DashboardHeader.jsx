@@ -445,6 +445,7 @@ export default function DashboardHeader() {
 
   const isOverviewActive = location.pathname === "/";
   const isMonitorActive = location.pathname === "/monitor";
+  const isProcessPage = pathParts[0] === "process";
   const isConsumerActive = isMonitorActive && monitorTab === "commercial";
   const isIndustrialActive = isMonitorActive && monitorTab === "industrial";
   const isAnalyticsActive = pathParts[0] === "analytics" || pathParts[0] === "stats";
@@ -524,11 +525,14 @@ export default function DashboardHeader() {
             {!isOverviewActive && !isMonitorActive ? (
               <button
                 type="button"
-                onClick={() => navigate("/")}
-                className="w-10 h-10 rounded-lg border border-gray-300 bg-gray-50 flex items-center justify-center shadow-sm hover:bg-white shrink-0"
-                aria-label="Back to overview"
+                onClick={isProcessPage ? undefined : () => navigate("/")}
+                disabled={isProcessPage}
+                className={`w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center shadow-sm shrink-0 ${
+                  isProcessPage ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50 hover:bg-white"
+                }`}
+                aria-label={isProcessPage ? "Back disabled on process page" : "Back to overview"}
               >
-                <FiArrowLeft className="text-lg text-gray-700" />
+                <FiArrowLeft className={`text-lg ${isProcessPage ? "text-gray-400" : "text-gray-700"}`} />
               </button>
             ) : null}
             {isOverviewActive ? (
@@ -538,13 +542,23 @@ export default function DashboardHeader() {
                 className="h-9 w-auto object-contain shrink-0"
               />
             ) : (
-              <button type="button" onClick={() => navigate("/")} className="shrink-0" aria-label="Go to overview">
-                <img
-                  src="https://ap.elementsenergies.com/images/eelogo.webp"
-                  alt="Logo"
-                  className="h-9 w-auto object-contain shrink-0"
-                />
-              </button>
+              <>
+                {isProcessPage ? (
+                  <img
+                    src="https://ap.elementsenergies.com/images/eelogo.webp"
+                    alt="Logo"
+                    className="h-9 w-auto object-contain shrink-0"
+                  />
+                ) : (
+                  <button type="button" onClick={() => navigate("/")} className="shrink-0" aria-label="Go to overview">
+                    <img
+                      src="https://ap.elementsenergies.com/images/eelogo.webp"
+                      alt="Logo"
+                      className="h-9 w-auto object-contain shrink-0"
+                    />
+                  </button>
+                )}
+              </>
             )}
             {isStatsPage ? (
               <div className="min-w-0">
@@ -552,11 +566,12 @@ export default function DashboardHeader() {
                 <div className="text-xs text-gray-500 tabular-nums truncate">{consumerServiceNo}</div>
               </div>
             ) : (
-              <div className="font-semibold text-gray-900 truncate">APEPDCL Dashboard</div>
+              <div className="font-semibold text-gray-900 truncate">{isProcessPage ? "Shelton Hotel" : "APEPDCL Dashboard"}</div>
             )}
           </div>
 
-          <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-2 w-full xl:w-auto">
+          {!isProcessPage ? (
+            <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-2 w-full xl:w-auto">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
               {isOverviewActive ? (
                 <OverviewModeToggle isListMode={false} onToggle={() => navigate("/monitor")} />
@@ -606,7 +621,7 @@ export default function DashboardHeader() {
                     onTabChange={(tab) => applyMonitorFilters({ tab })}
                     onDistrictChange={(district) => applyMonitorFilters({ district })}
                   />
-                ) : (
+                ) : isProcessPage ? null : (
                   <>
                     {!isMonitorActive ? (
                       <NavLink to="/" className={navClass(isOverviewActive)}>
@@ -699,7 +714,8 @@ export default function DashboardHeader() {
               ) : null}
               </div>
             ) : null}
-          </nav>
+            </nav>
+          ) : null}
         </div>
       </header>
 

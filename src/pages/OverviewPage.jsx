@@ -21,6 +21,40 @@ const DISTRICT_MAP = {
   EDG: { name: "East Godavari", lat: 17.0005, lng: 81.804 },
   ELR: { name: "West Godavari", lat: 16.7107, lng: 81.0952 },
 };
+const AP_MAX_BOUNDS = [
+  [12.5, 76.5],
+  [19.5, 84.5],
+];
+const AP_STATE_GEOJSON_URL = "/geo/andhra-pradesh-state.geojson";
+const AP_DISTRICTS_GEOJSON_URL = "/geo/andhra-pradesh-districts.geojson";
+const AP_NEW_DISTRICTS_GEOJSON_URL = "/geo/andhra-pradesh-new-districts.geojson";
+const WORLD_MASK_RING = [
+  [-90, -180],
+  [-90, 180],
+  [90, 180],
+  [90, -180],
+];
+const SERVICE_AREA_DISTRICTS = new Set(["Srikakulam", "Vizianagaram", "Visakhapatnam", "East Godavari", "West Godavari"]);
+const SERVICE_AREA_NEW_DISTRICTS = new Set(["Anakapalli"]);
+
+function geometryToMaskRings(geometry) {
+  if (!geometry) return [];
+
+  if (geometry.type === "Polygon") {
+    return geometry.coordinates.map((ring) => ring.map(([lng, lat]) => [lat, lng]));
+  }
+
+  if (geometry.type === "MultiPolygon") {
+    return geometry.coordinates.flatMap((polygon) => polygon.map((ring) => ring.map(([lng, lat]) => [lat, lng])));
+  }
+
+  return [];
+}
+
+function buildMaskRings(geoJson) {
+  const features = geoJson?.features ?? [];
+  return features.flatMap((feature) => geometryToMaskRings(feature.geometry));
+}
 
 function tint(hex, amount01) {
   const h = hex.replace("#", "");
@@ -196,11 +230,16 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return undefined;
 
-    const coastalApBounds = L.latLngBounds([16.05, 80.75], [18.65, 84.15]);
+    const apBounds = L.latLngBounds(AP_MAX_BOUNDS);
 
     const map = L.map(mapContainerRef.current, {
       zoomControl: true,
       scrollWheelZoom: false,
+      maxBounds: apBounds,
+      maxBoundsViscosity: 1.0,
+      zoomSnap: 0.25,
+      zoomDelta: 0.25,
+      wheelPxPerZoomLevel: 100,
     });
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -208,35 +247,123 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
       maxZoom: 18,
     }).addTo(map);
 
-    map.fitBounds(coastalApBounds);
-    map.setMaxBounds(coastalApBounds.pad(0.03));
-    map.setMinZoom(map.getZoom());
+    map.fitBounds(apBounds);
+    map.setMaxBounds(apBounds);
 
-    const districtLayer = L.layerGroup().addTo(map);
-    Object.entries(DISTRICT_MAP).forEach(([code, district]) => {
-      L.circleMarker([district.lat, district.lng], {
-        radius: 7,
-        color: "#2563eb",
-        weight: 2,
-        fillColor: "#dbeafe",
-        fillOpacity: 0.9,
+    const maskPane = map.createPane("ap-mask");
+    maskPane.style.zIndex = "350";
+    maskPane.style.pointerEvents = "none";
+
+    const districtBoundaryPane = map.createPane("ap-district-boundaries");
+    districtBoundaryPane.style.zIndex = "360";
+    districtBoundaryPane.style.pointerEvents = "none";
+
+    const stateBoundaryPane = map.createPane("ap-state-boundary");
+    stateBoundaryPane.style.zIndex = "370";
+    stateBoundaryPane.style.pointerEvents = "none";
+
+    const serviceAreaPane = map.createPane("ap-service-area");
+    serviceAreaPane.style.zIndex = "380";
+    serviceAreaPane.style.pointerEvents = "none";
+
+    let cancelled = false;
+    let fittedBounds = apBounds;
+    const fitToState = () => {
+      if (fittedBounds?.isValid?.()) {
+        map.fitBounds(fittedBounds, { padding: [4, 4], animate: false });
+      }
+    };
+
+    void Promise.all([
+      fetch(AP_STATE_GEOJSON_URL).then((response) => response.json()),
+      fetch(AP_DISTRICTS_GEOJSON_URL).then((response) => response.json()),
+      fetch(AP_NEW_DISTRICTS_GEOJSON_URL).then((response) => response.json()),
+    ])
+      .then(([stateGeoJson, districtGeoJson, newDistrictGeoJson]) => {
+        if (cancelled) return;
+
+        const maskRings = buildMaskRings(stateGeoJson);
+        if (maskRings.length) {
+          L.polygon([WORLD_MASK_RING, ...maskRings], {
+            pane: "ap-mask",
+            stroke: false,
+            fillColor: "#f8fafc",
+            fillOpacity: 1,
+            interactive: false,
+          }).addTo(map);
+        }
+
+        L.geoJSON(districtGeoJson, {
+          pane: "ap-district-boundaries",
+          interactive: false,
+          style: {
+            color: "#cbd5e1",
+            weight: 1,
+            opacity: 0.9,
+            fillColor: "#ffffff",
+            fillOpacity: 0,
+          },
+        }).addTo(map);
+
+        const stateLayer = L.geoJSON(stateGeoJson, {
+          pane: "ap-state-boundary",
+          interactive: false,
+          style: {
+            color: "#334155",
+            weight: 1.5,
+            opacity: 1,
+            fillColor: "#ffffff",
+            fillOpacity: 0,
+          },
+        }).addTo(map);
+
+        L.geoJSON(districtGeoJson, {
+          pane: "ap-service-area",
+          interactive: false,
+          filter: (feature) => SERVICE_AREA_DISTRICTS.has(feature?.properties?.dtname),
+          style: {
+            color: PURPLE,
+            weight: 2.5,
+            opacity: 1,
+            fillOpacity: 0,
+          },
+        }).addTo(map);
+
+        L.geoJSON(newDistrictGeoJson, {
+          pane: "ap-service-area",
+          interactive: false,
+          filter: (feature) => SERVICE_AREA_NEW_DISTRICTS.has(feature?.properties?.NAME),
+          style: {
+            color: PURPLE,
+            weight: 2.5,
+            opacity: 1,
+            fillOpacity: 0,
+          },
+        }).addTo(map);
+
+        const stateBounds = stateLayer.getBounds();
+        if (stateBounds.isValid()) {
+          fittedBounds = stateBounds;
+          fitToState();
+          map.setMinZoom(map.getZoom());
+        }
       })
-        .bindTooltip(`${code} · ${district.name}`, {
-          permanent: true,
-          direction: "top",
-          offset: [0, -12],
-          className: "overview-district-label",
-        })
-        .addTo(districtLayer);
-    });
+      .catch((error) => {
+        console.error("Failed to load Andhra Pradesh boundaries", error);
+        map.setMinZoom(map.getZoom());
+      });
 
     markerLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
-    const invalidate = () => map.invalidateSize();
+    const invalidate = () => {
+      map.invalidateSize();
+      fitToState();
+    };
     const onWheel = (event) => {
       if (event.ctrlKey) {
         map.scrollWheelZoom.enable();
+        event.preventDefault();
         return;
       }
 
@@ -251,6 +378,7 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
     window.addEventListener("keyup", disableWheelZoom);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("resize", invalidate);
       window.removeEventListener("keyup", disableWheelZoom);
       map.getContainer().removeEventListener("wheel", onWheel);
