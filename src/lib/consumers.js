@@ -1,6 +1,7 @@
 import { seededInt, seededPick } from "./seeded";
 
-const DISTRICTS = ["VZM", "AKP", "VSP", "ELR", "EDG"];
+const DISTRICTS = ["SKM", "VZM", "AKP", "VSP", "ELR", "EDG"];
+const EXTRA_DISTRICT_OPTIONS = ["RJY"];
 
 const INDUSTRIAL_CATEGORIES = [
   "INDUSTRY (GENERAL)-HT",
@@ -88,7 +89,45 @@ export function getAllConsumers() {
     }
   }
 
+  rows.push({
+    ...buildConsumer("KKD001", seededPick("KKD001|cat", COMMERCIAL_CATEGORIES)),
+    consumerName: "Kakinada Demo Site",
+  });
+  rows.push({
+    ...buildConsumer("KKD002", seededPick("KKD002|cat", COMMERCIAL_CATEGORIES)),
+    consumerName: "Peddapuram Demo Site",
+  });
+  rows.push({
+    ...buildConsumer("ELU001", seededPick("ELU001|cat", INDUSTRIAL_CATEGORIES)),
+    consumerName: "Polavaram Demo Site",
+  });
+
+  rows.push({
+    ...buildConsumer("RJY001", seededPick("RJY001|cat", COMMERCIAL_CATEGORIES)),
+    consumerName: "Rajamahendravaram Retail Hub",
+  });
+  rows.push({
+    ...buildConsumer("RJY002", seededPick("RJY002|cat", COMMERCIAL_CATEGORIES)),
+    consumerName: "Rajamahendravaram Traders",
+  });
+  rows.push({
+    ...buildConsumer("RJY003", seededPick("RJY003|cat", COMMERCIAL_CATEGORIES)),
+    consumerName: "Godavari Offices RJY",
+  });
+  rows.push({
+    ...buildConsumer("RJY501", seededPick("RJY501|cat", INDUSTRIAL_CATEGORIES)),
+    consumerName: "Rajamahendravaram Foods",
+  });
+  rows.push({
+    ...buildConsumer("RJY502", seededPick("RJY502|cat", INDUSTRIAL_CATEGORIES)),
+    consumerName: "Godavari Engineering RJY",
+  });
+  rows.push({
+    ...buildConsumer("RJY503", seededPick("RJY503|cat", INDUSTRIAL_CATEGORIES)),
+    consumerName: "Rajamahendravaram Agro Mills",
+  });
+
   return rows;
 }
 
-export const DISTRICT_OPTIONS = ["All Districts", ...DISTRICTS];
+export const DISTRICT_OPTIONS = ["All Districts", ...DISTRICTS, ...EXTRA_DISTRICT_OPTIONS];

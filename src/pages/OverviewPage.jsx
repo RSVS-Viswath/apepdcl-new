@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Chart from "react-apexcharts";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -15,10 +15,16 @@ const PURPLE = "#6A42B2";
 const OVERVIEW_TABS = ["All", "Industrial", "Commercial"];
 const DISTRICT_MAP = {
   SKM: { name: "Srikakulam", lat: 18.2969, lng: 83.8976 },
+  MNY: { name: "Parvathipuram Manyam", lat: 18.7731, lng: 83.4264 },
   VZM: { name: "Vizianagaram", lat: 18.1166, lng: 83.4115 },
   VSP: { name: "Visakhapatnam", lat: 17.6868, lng: 83.2185 },
   AKP: { name: "Anakapalle", lat: 17.6903, lng: 83.0086 },
+  ASR: { name: "Alluri Sitharama Raju", lat: 17.9172, lng: 82.7146 },
+  KKD: { name: "Kakinada", lat: 16.9891, lng: 82.2475 },
+  KSM: { name: "Dr. B.R. Ambedkar Konaseema", lat: 16.582, lng: 82.0167 },
   EDG: { name: "East Godavari", lat: 17.0005, lng: 81.804 },
+  RJY: { name: "Rajamahendravaram", lat: 17.0052, lng: 81.7778 },
+  ELU: { name: "Eluru", lat: 16.7107, lng: 81.0952 },
   ELR: { name: "West Godavari", lat: 16.7107, lng: 81.0952 },
 };
 const AP_MAX_BOUNDS = [
@@ -28,14 +34,59 @@ const AP_MAX_BOUNDS = [
 const AP_STATE_GEOJSON_URL = "/geo/andhra-pradesh-state.geojson";
 const AP_DISTRICTS_GEOJSON_URL = "/geo/andhra-pradesh-districts.geojson";
 const AP_NEW_DISTRICTS_GEOJSON_URL = "/geo/andhra-pradesh-new-districts.geojson";
+const AP_HEADQUARTERS_COORDS = [17.738639, 83.308664];
 const WORLD_MASK_RING = [
   [-90, -180],
   [-90, 180],
   [90, 180],
   [90, -180],
 ];
-const SERVICE_AREA_DISTRICTS = new Set(["Srikakulam", "Vizianagaram", "Visakhapatnam", "East Godavari", "West Godavari"]);
-const SERVICE_AREA_NEW_DISTRICTS = new Set(["Anakapalli"]);
+const SERVICE_AREA_NEW_DISTRICTS = new Set([
+  "Srikakulam",
+  "Manyam District",
+  "Vizianagaram",
+  "Visakhapatnam",
+  "Anakapalli",
+  "AlluriSitharama Raju District",
+  "Kakinada",
+  "KonaSeema",
+  "East Godavari",
+  "Eluru",
+  "West Godavari",
+]);
+const MAP_DISTRICT_OPTIONS = [
+  { value: "All", label: "All Districts" },
+  { value: "SKM", label: "Srikakulam" },
+  { value: "MNY", label: "Parvathipuram Manyam" },
+  { value: "VZM", label: "Vizianagaram" },
+  { value: "VSP", label: "Visakhapatnam" },
+  { value: "AKP", label: "Anakapalli" },
+  { value: "ASR", label: "Alluri Sitharama Raju" },
+  { value: "KKD", label: "Kakinada" },
+  { value: "KSM", label: "Dr. B.R. Ambedkar Konaseema" },
+  { value: "EDG", label: "East Godavari" },
+  { value: "ELU", label: "Eluru" },
+  { value: "ELR", label: "West Godavari" },
+];
+const DISTRICT_GEOMETRY_LOOKUP = {
+  SKM: { property: "NAME", value: "Srikakulam", source: "new" },
+  MNY: { property: "NAME", value: "Manyam District", source: "new" },
+  VZM: { property: "NAME", value: "Vizianagaram", source: "new" },
+  VSP: { property: "NAME", value: "Visakhapatnam", source: "new" },
+  AKP: { property: "NAME", value: "Anakapalli", source: "new" },
+  ASR: { property: "NAME", value: "AlluriSitharama Raju District", source: "new" },
+  KKD: { property: "NAME", value: "Kakinada", source: "new" },
+  KSM: { property: "NAME", value: "KonaSeema", source: "new" },
+  EDG: { property: "NAME", value: "East Godavari", source: "new" },
+  RJY: { property: "NAME", value: "East Godavari", source: "new" },
+  ELU: { property: "NAME", value: "Eluru", source: "new" },
+  ELR: { property: "NAME", value: "West Godavari", source: "new" },
+};
+const SPECIAL_CONSUMER_POINTS = {
+  KKD001: { lat: 16.9891, lng: 82.2475 },
+  KKD002: { lat: 17.0778, lng: 82.1384 },
+  ELU001: { lat: 17.2475, lng: 81.6437 },
+};
 
 function geometryToMaskRings(geometry) {
   if (!geometry) return [];
@@ -54,6 +105,130 @@ function geometryToMaskRings(geometry) {
 function buildMaskRings(geoJson) {
   const features = geoJson?.features ?? [];
   return features.flatMap((feature) => geometryToMaskRings(feature.geometry));
+}
+
+function buildFocusGeoJson(selectedDistrict, stateGeoJson, legacyDistrictGeoJson, newDistrictGeoJson) {
+  if (!selectedDistrict || selectedDistrict === "All") return stateGeoJson;
+
+  const lookup = DISTRICT_GEOMETRY_LOOKUP[selectedDistrict];
+  if (!lookup) return stateGeoJson;
+
+  const sourceGeoJson = lookup.source === "legacy" ? legacyDistrictGeoJson : newDistrictGeoJson;
+  const feature = findFeatureByProperty(sourceGeoJson, lookup.property, lookup.value);
+
+  return feature ? { type: "FeatureCollection", features: [feature] } : stateGeoJson;
+}
+
+function findFeatureByProperty(geoJson, property, value) {
+  return geoJson?.features?.find((feature) => feature?.properties?.[property] === value) ?? null;
+}
+
+function getGeometryBounds(geometry) {
+  if (!geometry) return null;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  const visit = (coordinates) => {
+    if (!Array.isArray(coordinates)) return;
+    if (typeof coordinates[0] === "number" && typeof coordinates[1] === "number") {
+      const [lng, lat] = coordinates;
+      minLat = Math.min(minLat, lat);
+      maxLat = Math.max(maxLat, lat);
+      minLng = Math.min(minLng, lng);
+      maxLng = Math.max(maxLng, lng);
+      return;
+    }
+    coordinates.forEach(visit);
+  };
+
+  visit(geometry.coordinates);
+  if (!Number.isFinite(minLat) || !Number.isFinite(minLng)) return null;
+
+  return { minLat, maxLat, minLng, maxLng };
+}
+
+function ringContainsPoint(point, ring) {
+  const [lng, lat] = point;
+  let inside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+    const [lngI, latI] = ring[i];
+    const [lngJ, latJ] = ring[j];
+    const intersects =
+      latI > lat !== latJ > lat && lng < ((lngJ - lngI) * (lat - latI)) / ((latJ - latI) || Number.EPSILON) + lngI;
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+}
+
+function polygonContainsPoint(point, polygonCoordinates) {
+  if (!ringContainsPoint(point, polygonCoordinates[0])) return false;
+
+  for (let i = 1; i < polygonCoordinates.length; i += 1) {
+    if (ringContainsPoint(point, polygonCoordinates[i])) return false;
+  }
+
+  return true;
+}
+
+function geometryContainsPoint(point, geometry) {
+  if (!geometry) return false;
+  if (geometry.type === "Polygon") return polygonContainsPoint(point, geometry.coordinates);
+  if (geometry.type === "MultiPolygon") return geometry.coordinates.some((polygon) => polygonContainsPoint(point, polygon));
+  return false;
+}
+
+function buildDistrictGeometryMap(legacyDistrictGeoJson, newDistrictGeoJson) {
+  const result = {};
+
+  Object.entries(DISTRICT_GEOMETRY_LOOKUP).forEach(([districtCode, lookup]) => {
+    const sourceGeoJson = lookup.source === "legacy" ? legacyDistrictGeoJson : newDistrictGeoJson;
+    const feature = findFeatureByProperty(sourceGeoJson, lookup.property, lookup.value);
+    if (feature?.geometry) {
+      result[districtCode] = {
+        geometry: feature.geometry,
+        bounds: getGeometryBounds(feature.geometry),
+      };
+    }
+  });
+
+  return result;
+}
+
+function resolveConsumerLatLng(consumer, districtGeometryMap) {
+  const specialPoint = SPECIAL_CONSUMER_POINTS[consumer.serviceNo];
+  if (specialPoint) {
+    return specialPoint;
+  }
+
+  const districtCode = String(consumer.serviceNo).slice(0, 3).toUpperCase();
+  const districtGeometry = districtGeometryMap[districtCode];
+  const districtCenter = DISTRICT_MAP[districtCode];
+
+  if (!districtGeometry?.geometry || !districtGeometry.bounds) {
+    return {
+      lat: districtCenter?.lat ?? consumer.mapLat ?? 16.8,
+      lng: districtCenter?.lng ?? consumer.mapLng ?? 81.6,
+    };
+  }
+
+  const { minLat, maxLat, minLng, maxLng } = districtGeometry.bounds;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const lat = seededNumber(`${consumer.serviceNo}|poly|lat|${attempt}`, minLat, maxLat);
+    const lng = seededNumber(`${consumer.serviceNo}|poly|lng|${attempt}`, minLng, maxLng);
+    if (geometryContainsPoint([lng, lat], districtGeometry.geometry)) {
+      return { lat, lng };
+    }
+  }
+
+  return {
+    lat: districtCenter?.lat ?? consumer.mapLat ?? 16.8,
+    lng: districtCenter?.lng ?? consumer.mapLng ?? 81.6,
+  };
 }
 
 function tint(hex, amount01) {
@@ -226,6 +401,16 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markerLayerRef = useRef(null);
+  const districtGeometryRef = useRef({});
+  const [districtGeometryVersion, setDistrictGeometryVersion] = useState(0);
+  const [selectedMapDistrict, setSelectedMapDistrict] = useState("All");
+  const visibleConsumers = useMemo(
+    () =>
+      selectedMapDistrict === "All"
+        ? consumers
+        : consumers.filter((consumer) => String(consumer.serviceNo).slice(0, 3).toUpperCase() === selectedMapDistrict),
+    [consumers, selectedMapDistrict]
+  );
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return undefined;
@@ -266,11 +451,14 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
     serviceAreaPane.style.zIndex = "380";
     serviceAreaPane.style.pointerEvents = "none";
 
+    const hqMarkerPane = map.createPane("ap-hq-marker");
+    hqMarkerPane.style.zIndex = "650";
+
     let cancelled = false;
     let fittedBounds = apBounds;
     const fitToState = () => {
       if (fittedBounds?.isValid?.()) {
-        map.fitBounds(fittedBounds, { padding: [4, 4], animate: false });
+        map.fitBounds(fittedBounds, { padding: [0, 0], animate: false });
       }
     };
 
@@ -282,7 +470,11 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
       .then(([stateGeoJson, districtGeoJson, newDistrictGeoJson]) => {
         if (cancelled) return;
 
-        const maskRings = buildMaskRings(stateGeoJson);
+        districtGeometryRef.current = buildDistrictGeometryMap(districtGeoJson, newDistrictGeoJson);
+        setDistrictGeometryVersion((version) => version + 1);
+
+        const focusGeoJson = buildFocusGeoJson(selectedMapDistrict, stateGeoJson, districtGeoJson, newDistrictGeoJson);
+        const maskRings = buildMaskRings(focusGeoJson);
         if (maskRings.length) {
           L.polygon([WORLD_MASK_RING, ...maskRings], {
             pane: "ap-mask",
@@ -293,19 +485,21 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
           }).addTo(map);
         }
 
-        L.geoJSON(districtGeoJson, {
-          pane: "ap-district-boundaries",
-          interactive: false,
-          style: {
-            color: "#cbd5e1",
-            weight: 1,
-            opacity: 0.9,
-            fillColor: "#ffffff",
-            fillOpacity: 0,
-          },
-        }).addTo(map);
+        if (selectedMapDistrict === "All") {
+          L.geoJSON(newDistrictGeoJson, {
+            pane: "ap-district-boundaries",
+            interactive: false,
+            style: {
+              color: "#cbd5e1",
+              weight: 1,
+              opacity: 0.9,
+              fillColor: "#ffffff",
+              fillOpacity: 0,
+            },
+          }).addTo(map);
+        }
 
-        const stateLayer = L.geoJSON(stateGeoJson, {
+        const stateLayer = L.geoJSON(focusGeoJson, {
           pane: "ap-state-boundary",
           interactive: false,
           style: {
@@ -317,22 +511,13 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
           },
         }).addTo(map);
 
-        L.geoJSON(districtGeoJson, {
-          pane: "ap-service-area",
-          interactive: false,
-          filter: (feature) => SERVICE_AREA_DISTRICTS.has(feature?.properties?.dtname),
-          style: {
-            color: PURPLE,
-            weight: 2.5,
-            opacity: 1,
-            fillOpacity: 0,
-          },
-        }).addTo(map);
-
         L.geoJSON(newDistrictGeoJson, {
           pane: "ap-service-area",
           interactive: false,
-          filter: (feature) => SERVICE_AREA_NEW_DISTRICTS.has(feature?.properties?.NAME),
+          filter: (feature) =>
+            selectedMapDistrict === "All"
+              ? SERVICE_AREA_NEW_DISTRICTS.has(feature?.properties?.NAME)
+              : DISTRICT_GEOMETRY_LOOKUP[selectedMapDistrict]?.value === feature?.properties?.NAME,
           style: {
             color: PURPLE,
             weight: 2.5,
@@ -344,6 +529,7 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
         const stateBounds = stateLayer.getBounds();
         if (stateBounds.isValid()) {
           fittedBounds = stateBounds;
+          map.setMaxBounds(selectedMapDistrict === "All" ? apBounds : stateBounds);
           fitToState();
           map.setMinZoom(map.getZoom());
         }
@@ -355,6 +541,31 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
 
     markerLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+
+    if (selectedMapDistrict === "All" || selectedMapDistrict === "VSP") {
+      L.marker(AP_HEADQUARTERS_COORDS, {
+        pane: "ap-hq-marker",
+        zIndexOffset: 2000,
+        icon: L.divIcon({
+          className: "",
+          iconSize: [30, 42],
+          iconAnchor: [15, 42],
+          tooltipAnchor: [0, -36],
+          html: `
+            <div style="position:relative;width:30px;height:42px;">
+              <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);width:28px;height:28px;border-radius:9999px;background:#D4A017;border:3px solid #ffffff;box-shadow:0 6px 16px rgba(15,23,42,0.26);display:flex;align-items:center;justify-content:center;color:#ffffff;font-size:14px;line-height:1;">♛</div>
+              <div style="position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:15px solid #D4A017;filter:drop-shadow(0 3px 6px rgba(15,23,42,0.16));"></div>
+            </div>
+          `,
+        }),
+      })
+        .bindTooltip("APEPDCL HQ", {
+          direction: "top",
+          offset: [0, -12],
+          opacity: 1,
+        })
+        .addTo(map);
+    }
 
     const invalidate = () => {
       map.invalidateSize();
@@ -386,17 +597,23 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
       mapRef.current = null;
       map.remove();
     };
-  }, []);
+  }, [selectedMapDistrict]);
 
   useEffect(() => {
     const markerLayer = markerLayerRef.current;
     if (!markerLayer) return;
+    if (!Object.keys(districtGeometryRef.current).length) return;
 
     markerLayer.clearLayers();
 
-    consumers.forEach((consumer) => {
+    visibleConsumers.forEach((consumer) => {
+      const { lat, lng } = resolveConsumerLatLng(consumer, districtGeometryRef.current);
+      const districtCode = String(consumer.serviceNo).slice(0, 3).toUpperCase();
       const isIndustrial = String(consumer.category).toUpperCase().includes("INDUSTRY");
-      const marker = L.circleMarker([consumer.mapLat, consumer.mapLng], {
+      const tooltipDirection = districtCode === "SKM" || lng > 83.55 ? "left" : lat > 18.15 ? "bottom" : "top";
+      const tooltipOffset =
+        tooltipDirection === "left" ? [-12, 0] : tooltipDirection === "bottom" ? [0, 10] : [0, -10];
+      const marker = L.circleMarker([lat, lng], {
         radius: isIndustrial ? 7 : 6,
         color: "#ffffff",
         weight: 2,
@@ -412,24 +629,38 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
           </div>
         `,
         {
-          direction: "top",
-          offset: [0, -10],
+          direction: tooltipDirection,
+          offset: tooltipOffset,
           opacity: 1,
         }
       );
       marker.on("click", () => onConsumerClick(consumer));
       marker.addTo(markerLayer);
     });
-  }, [consumers, onConsumerClick]);
+  }, [districtGeometryVersion, onConsumerClick, visibleConsumers]);
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-3">
         <div>
           <div className="text-base font-semibold text-gray-900">APEPDCL Consumer Map</div>
-          <div className="text-sm text-gray-500">Hover a consumer point to view the name and service number. Click to open stats.</div>
+          
         </div>
-        <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+        <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
+          <label className="flex items-center gap-2 bg-gray-50 rounded-lg border border-slate-200 px-3 h-9 text-sm">
+            <span className="text-gray-500 whitespace-nowrap">District</span>
+            <select
+              value={selectedMapDistrict}
+              onChange={(event) => setSelectedMapDistrict(event.target.value)}
+              className="bg-transparent text-sm font-medium text-gray-900 outline-none"
+            >
+              {MAP_DISTRICT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-[#6A42B2]" />
             Industrial
@@ -438,7 +669,7 @@ function AndhraConsumerMap({ consumers, onConsumerClick }) {
             <span className="w-3 h-3 rounded-full bg-[#13C4A9]" />
             Commercial
           </div>
-          <div className="text-gray-400">{consumers.length} consumers shown</div>
+          <div className="text-gray-400">{visibleConsumers.length} consumers shown</div>
         </div>
       </div>
 
@@ -482,20 +713,14 @@ export default function OverviewPage() {
   }, [allConsumers, district]);
   const mapConsumers = useMemo(
     () =>
-      filteredConsumers
+      allConsumers
         .filter((consumer) => matchesTab(consumer.category, tab))
         .map((consumer) => {
-          const districtCode = String(consumer.serviceNo).slice(0, 3).toUpperCase();
-          const districtCenter = DISTRICT_MAP[districtCode];
-          const latOffset = seededNumber(`${consumer.serviceNo}|map|lat`, -0.18, 0.18);
-          const lngOffset = seededNumber(`${consumer.serviceNo}|map|lng`, -0.22, 0.22);
           return {
             ...consumer,
-            mapLat: (districtCenter?.lat ?? 16.8) + latOffset,
-            mapLng: (districtCenter?.lng ?? 81.6) + lngOffset,
           };
         }),
-    [filteredConsumers, tab]
+    [allConsumers, tab]
   );
 
   const stats = useMemo(() => {

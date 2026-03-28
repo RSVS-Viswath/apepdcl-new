@@ -525,7 +525,7 @@ export default function DashboardHeader() {
             {!isOverviewActive && !isMonitorActive ? (
               <button
                 type="button"
-                onClick={isProcessPage ? undefined : () => navigate("/")}
+                onClick={isProcessPage ? undefined : () => navigate(-1)}
                 disabled={isProcessPage}
                 className={`w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center shadow-sm shrink-0 ${
                   isProcessPage ? "bg-gray-100 cursor-not-allowed" : "bg-gray-50 hover:bg-white"

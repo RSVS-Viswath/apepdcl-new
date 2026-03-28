@@ -322,7 +322,7 @@ export default function AnalyticsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate(statsHref)}
+              onClick={() => navigate(-1)}
               className="w-11 h-11 rounded-lg border border-gray-300 bg-gray-50 flex items-center justify-center shadow-sm hover:bg-white"
               aria-label="Back to stats"
             >
