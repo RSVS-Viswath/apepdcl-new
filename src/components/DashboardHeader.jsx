@@ -445,7 +445,8 @@ export default function DashboardHeader() {
 
   const isOverviewActive = location.pathname === "/";
   const isMonitorActive = location.pathname === "/monitor";
-  const isProcessPage = pathParts[0] === "process";
+  const isProcessPage = pathParts[0] === "process" || pathParts[0] === "process1";
+  const processPageTitle = pathParts[0] === "process1" ? "Pajson Agro" : "Shelton Hotel";
   const isConsumerActive = isMonitorActive && monitorTab === "commercial";
   const isIndustrialActive = isMonitorActive && monitorTab === "industrial";
   const isAnalyticsActive = pathParts[0] === "analytics" || pathParts[0] === "stats";
@@ -566,7 +567,7 @@ export default function DashboardHeader() {
                 <div className="text-xs text-gray-500 tabular-nums truncate">{consumerServiceNo}</div>
               </div>
             ) : (
-              <div className="font-semibold text-gray-900 truncate">{isProcessPage ? "Shelton Hotel" : "APEPDCL Dashboard"}</div>
+              <div className="font-semibold text-gray-900 truncate">{isProcessPage ? processPageTitle : "APEPDCL Dashboard"}</div>
             )}
           </div>
 
