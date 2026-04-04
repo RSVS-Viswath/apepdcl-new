@@ -1125,11 +1125,10 @@ export default function Process1Page() {
         <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="border-b border-slate-200 px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Path</div>
-            <div className="mt-1 text-sm font-semibold text-gray-900">Uploaded Pajson Agro solar path study</div>
           </div>
           <div className="h-[320px] bg-slate-950">
             <video
-              className="block h-full w-full object-contain"
+              className="pointer-events-none block h-full w-full object-contain"
               src={SUNPATH_VIDEO_SRC}
               poster={SUNPATH_POSTER_SRC}
               autoPlay
@@ -1137,7 +1136,6 @@ export default function Process1Page() {
               muted
               playsInline
               preload="auto"
-              controls
             />
           </div>
         </div>
@@ -1148,10 +1146,15 @@ export default function Process1Page() {
             <div className="mt-1 text-sm font-semibold text-gray-900">Facility thermal render and rooftop exposure view</div>
           </div>
           <div className="relative h-[320px] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef2ff_55%,#e2e8f0_100%)]">
-            <img src={MODEL_IMAGE_SRC} alt="Pajson Agro 3D model view" className="h-full w-full object-cover" loading="lazy" />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/60 via-slate-950/20 to-transparent px-4 py-3 text-white">
-              <div className="text-sm font-semibold">3D heat-map perspective</div>
-              <div className="text-[12px] text-white/80">Used here as the visual model card for the second section of the page.</div>
+            <img src={MODEL_IMAGE_SRC} alt="Pajson Agro 3D model view" className="h-full w-full object-contain" loading="lazy" />
+            <div className="absolute bottom-4 left-4 rounded-2xl border border-white/70 bg-white/88 px-3 py-2 shadow-lg backdrop-blur-sm">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Temperature Legend</div>
+              <div className="mt-2 h-3 w-40 rounded-full bg-[linear-gradient(90deg,#312e81_0%,#2563eb_18%,#38bdf8_36%,#fde047_62%,#fb923c_82%,#dc2626_100%)]" />
+              <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-slate-600">
+                <span>Cool</span>
+                <span>Moderate</span>
+                <span>Hot</span>
+              </div>
             </div>
           </div>
         </div>
