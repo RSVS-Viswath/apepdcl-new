@@ -250,25 +250,25 @@ function ProcessNode({ processKey, group, active, onClick }) {
         missing
           ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-50"
           : active
-            ? "border-slate-700 shadow-[0_0_0_2px_rgba(99,102,241,0.18)]"
-            : "border-white/60 shadow-sm hover:-translate-y-0.5 hover:shadow-md"
+            ? "card-breathing card-neon-active border-[1.5px]"
+            : "border-slate-200 shadow-sm hover:-translate-y-0.5 hover:shadow-md"
       }`}
-      style={{ backgroundColor: tone.color, boxShadow: active ? "0 12px 28px rgba(15, 23, 42, 0.08)" : undefined }}
+      style={{ backgroundColor: "#f3f4f6" }}
     >
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/75 shadow-sm"
-        style={{ color: tone.text }}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 shadow-sm"
+        style={{ color: "#6b7280" }}
       >
         <Icon className="text-[15px]" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold leading-tight" style={{ color: tone.text }}>
+        <span className="block truncate text-[13px] font-semibold leading-tight" style={{ color: "#374151" }}>
           {tone.label}
         </span>
       </span>
       <span
-        className="shrink-0 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold tabular-nums shadow-sm"
-        style={{ color: tone.text }}
+        className="shrink-0 rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-semibold tabular-nums shadow-sm"
+        style={{ color: "#4b5563" }}
       >
         {group ? formatKw(group.totalLoadKw) : "--"}
       </span>
@@ -298,6 +298,7 @@ export default function Process1Page() {
     operationTypes: [],
     loadTypes: [],
   });
+  const [clickedEquipment, setClickedEquipment] = useState(new Set());
   const processFlowRef = useRef(null);
   const [processColumnHeight, setProcessColumnHeight] = useState(null);
   const [processBaselineHeight, setProcessBaselineHeight] = useState(null);
@@ -477,6 +478,7 @@ export default function Process1Page() {
     });
     setActiveFilterSection("processTypes");
     setIsFilterModalOpen(false);
+    setClickedEquipment(new Set());
   }, [selectedProcess]);
 
   useEffect(() => {
@@ -763,6 +765,23 @@ export default function Process1Page() {
 
   return (
     <div className="space-y-2">
+      <style>{`
+        @keyframes breathing {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes neon-glow {
+          0%, 100% { box-shadow: 0 0 10px rgba(34, 211, 238, 0.5), inset 0 0 10px rgba(34, 211, 238, 0.2); }
+          50% { box-shadow: 0 0 20px rgba(34, 211, 238, 0.8), inset 0 0 10px rgba(34, 211, 238, 0.3); }
+        }
+        .card-breathing {
+          animation: breathing 1.5s ease-in-out infinite;
+        }
+        .card-neon-active {
+          animation: neon-glow 2s ease-in-out infinite;
+          border-color: #06b6d4 !important;
+        }
+      `}</style>
       <section className="flex flex-col gap-2">
         <div className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm">
           <div className="rounded-[18px] border border-slate-200 bg-[linear-gradient(135deg,#f8f5ff_0%,#ffffff_55%,#eefbf8_100%)] px-4 py-3">
@@ -817,8 +836,8 @@ export default function Process1Page() {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[1.7fr_0.62fr] lg:items-start">
-          <section ref={processFlowRef} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
+        <div className="grid gap-3 lg:grid-cols-[1.7fr_0.62fr] lg:items-start lg:min-h-0">
+          <section ref={processFlowRef} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm lg:flex lg:flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
@@ -847,9 +866,9 @@ export default function Process1Page() {
               </div>
             </div>
 
-            <div className="px-4 py-4">
+            <div className="flex min-h-0 flex-1 px-4 py-4 overflow-auto">
               {viewMode === "process" ? (
-                <div className="overflow-hidden">
+                <div className="overflow-auto w-full">
                   <div className="mx-auto w-full max-w-[930px] space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -942,10 +961,12 @@ export default function Process1Page() {
                   </div>
                 </div>
               ) : (
-                <div className="mx-auto grid w-full max-w-[930px] gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {UTILITY_FLOW.map((key) => (
-                    <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} />
-                  ))}
+                <div className="mx-auto w-full h-full max-w-[930px] flex flex-col">
+                  <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4 auto-rows-max w-full h-full">
+                    {UTILITY_FLOW.map((key) => (
+                      <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -1017,59 +1038,75 @@ export default function Process1Page() {
                       const operationPresentation = getOperationPresentation(item.operationType);
                       const ControlIcon = controlPresentation.icon;
                       const OperationIcon = operationPresentation.icon;
+                      const isClicked = clickedEquipment.has(item.id);
+
+                      const handleCardClick = () => {
+                        setClickedEquipment((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(item.id)) {
+                            next.delete(item.id);
+                          } else {
+                            next.add(item.id);
+                          }
+                          return next;
+                        });
+                      };
+
                       return (
-                        <div key={item.id} className="overflow-x-auto">
-                          <div
-                            className="min-w-[330px] rounded-2xl border-[1.5px] px-3 py-2.5"
-                            style={{ borderColor: tone.border, backgroundColor: tone.background }}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="relative shrink-0">
-                                <span className="absolute -left-1.5 -top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[12px] font-semibold text-slate-700 shadow">
-                                  {getUnitCount(item.units)}
-                                </span>
-                                <span
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-sm"
-                                  style={{ backgroundColor: tone.border, color: tone.text }}
-                                >
-                                  <ProcessIcon className="text-[16px]" />
-                                </span>
+                        <div
+                          key={item.id}
+                          onClick={handleCardClick}
+                          className={`rounded-2xl border-[1.5px] px-3 py-2.5 cursor-pointer transition-all ${
+                            isClicked ? "card-breathing card-neon-active" : ""
+                          }`}
+                          style={{ borderColor: tone.border, backgroundColor: tone.background }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                              <span className="absolute -left-1.5 -top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[12px] font-semibold text-slate-700 shadow">
+                                {getUnitCount(item.units)}
+                              </span>
+                              <span
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-sm"
+                                style={{ backgroundColor: tone.border, color: tone.text }}
+                              >
+                                <ProcessIcon className="text-[16px]" />
+                              </span>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="truncate text-[13px] font-semibold text-slate-900">{item.equipmentName}</div>
+                                </div>
+                                <div className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.04em]" style={{ color: tone.text }}>
+                                  {tone.tag}
+                                </div>
                               </div>
 
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="truncate text-[13px] font-semibold text-slate-900">{item.equipmentName}</div>
+                              <div className="mt-2 overflow-hidden rounded-xl border border-slate-400 bg-white">
+                                <div className="grid grid-cols-[92px_1fr_1fr] text-center">
+                                  <div className="flex items-center justify-center px-2 py-2 text-[12px] font-semibold text-slate-800 tabular-nums">
+                                    {formatKw(item.totalLoadKw)}
                                   </div>
-                                  <div className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.04em]" style={{ color: tone.text }}>
-                                    {tone.tag}
+                                  <div
+                                    className="flex flex-col items-center justify-center gap-0.5 border-l border-slate-300 px-2 py-1.5"
+                                    title={controlPresentation.label}
+                                    aria-label={controlPresentation.label}
+                                  >
+                                    <ControlIcon className="text-[20px] text-slate-800" />
+                                    <div className="text-[8px] font-semibold uppercase tracking-[0.07em] text-slate-500">
+                                      {controlPresentation.label}
+                                    </div>
                                   </div>
-                                </div>
-
-                                <div className="mt-2 overflow-hidden rounded-xl border border-slate-400 bg-white">
-                                  <div className="grid grid-cols-[92px_1fr_1fr] text-center">
-                                    <div className="flex items-center justify-center px-2 py-2 text-[12px] font-semibold text-slate-800 tabular-nums">
-                                      {formatKw(item.totalLoadKw)}
-                                    </div>
-                                    <div
-                                      className="flex flex-col items-center justify-center gap-0.5 border-l border-slate-300 px-2 py-1.5"
-                                      title={controlPresentation.label}
-                                      aria-label={controlPresentation.label}
-                                    >
-                                      <ControlIcon className="text-[20px] text-slate-800" />
-                                      <div className="text-[8px] font-semibold uppercase tracking-[0.07em] text-slate-500">
-                                        {controlPresentation.label}
-                                      </div>
-                                    </div>
-                                    <div
-                                      className="flex flex-col items-center justify-center gap-0.5 border-l border-slate-300 px-2 py-1.5"
-                                      title={operationPresentation.label}
-                                      aria-label={operationPresentation.label}
-                                    >
-                                      <OperationIcon className="text-[22px] text-slate-800" />
-                                      <div className="text-[8px] font-semibold uppercase tracking-[0.07em] text-slate-500">
-                                        {operationPresentation.label}
-                                      </div>
+                                  <div
+                                    className="flex flex-col items-center justify-center gap-0.5 border-l border-slate-300 px-2 py-1.5"
+                                    title={operationPresentation.label}
+                                    aria-label={operationPresentation.label}
+                                  >
+                                    <OperationIcon className="text-[22px] text-slate-800" />
+                                    <div className="text-[8px] font-semibold uppercase tracking-[0.07em] text-slate-500">
+                                      {operationPresentation.label}
                                     </div>
                                   </div>
                                 </div>
@@ -1124,7 +1161,9 @@ export default function Process1Page() {
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="border-b border-slate-200 px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Path</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Radiation Analysis</div>
+            <div className="mt-1 text-sm font-semibold text-gray-900">Pajson Agro</div>
+
           </div>
           <div className="h-[320px] bg-slate-950">
             <video
