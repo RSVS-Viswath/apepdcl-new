@@ -101,19 +101,20 @@ function EquipmentModal({ equipment, onClose }) {
         <div className="max-h-[75vh] overflow-auto px-5 py-5">
           <div className="min-w-full overflow-x-auto">
             <div className="grid gap-3 md:grid-cols-2">
-            {infoGroups.map((group) => (
-              <section key={group.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">{group.title}</h3>
-                <dl className="mt-3 space-y-2.5">
-                  {group.rows.map(([label, value]) => (
-                    <div key={label} className="rounded-lg bg-white px-3 py-2.5">
-                      <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">{label}</dt>
-                      <dd className="mt-1 text-sm text-gray-900">{value ?? "--"}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            ))}
+              {infoGroups.map((group) => (
+                <section key={group.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900">{group.title}</h3>
+                  <dl className="mt-3 space-y-2.5">
+                    {group.rows.map(([label, value]) => (
+                      <div key={label} className="rounded-lg bg-white px-3 py-2.5">
+                        <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">{label}</dt>
+                        <dd className="mt-1 text-sm text-gray-900">{value ?? "--"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -128,7 +129,9 @@ export default function ProcessPage() {
     return {
       totalEquipment: sheltonEquipmentRows.length,
       uniqueEquipment: new Set(
-        sheltonEquipmentRows.map((item) => String(item.equipmentName || "").trim().toUpperCase()).filter(Boolean)
+        sheltonEquipmentRows
+          .map((item) => String(item.equipmentName || "").trim().toUpperCase())
+          .filter(Boolean)
       ).size,
       totalShiftableLoad: sheltonEquipmentRows
         .reduce((sum, item) => sum + Number(item.maxShiftableLoadKw || 0), 0)
@@ -222,43 +225,44 @@ export default function ProcessPage() {
             <div className="min-h-0 flex-1 overflow-x-auto">
               <div className="min-w-full">
                 <table className="min-w-full table-fixed text-sm">
-                <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.08em] text-gray-500">
-                  <tr>
-                    <th className="w-[10%] px-3 py-2.5 font-semibold">S.No</th>
-                    <th className="w-[38%] px-3 py-2.5 font-semibold">Equipment Name</th>
-                    <th className="w-[29%] px-3 py-2.5 font-semibold">Type of Operations</th>
-                    <th className="w-[23%] px-3 py-2.5 font-semibold">Type of Control</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sheltonEquipmentRows.map((equipment, index) => (
-                    <tr
-                      key={equipment.id}
-                      className={`border-t border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50/55"}`}
-                    >
-                      <td className="px-3 py-2.5 align-top text-[13px] font-medium leading-5 text-gray-600">
-                        {equipment.serialNo ?? index + 1}
-                      </td>
-                      <td className="px-3 py-2.5 align-top">
-                        <button
-                          type="button"
-                          onClick={() => setActiveEquipment(equipment)}
-                          className="group block w-full text-left"
-                          aria-label={`Open ${equipment.equipmentName} details`}
-                        >
-                          <span className="inline-flex items-start gap-1 text-sm font-medium leading-5 text-gray-900 transition group-hover:text-indigo-600">
-                            <span className="truncate">{equipment.equipmentName}</span>
-                            <FiChevronRight className="mt-[2px] shrink-0 text-sm text-gray-400 transition group-hover:text-indigo-600" />
-                          </span>
-                          <span className="mt-0.5 block text-[11px] leading-4 text-gray-500">{equipment.processName}</span>
-                        </button>
-                      </td>
-                      <td className="px-3 py-2.5 align-top text-[13px] leading-5 text-gray-700">{equipment.operationType}</td>
-                      <td className="px-3 py-2.5 align-top text-[13px] leading-5 text-gray-700">{equipment.controlType}</td>
+                  <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.08em] text-gray-500">
+                    <tr>
+                      <th className="w-[10%] px-3 py-2.5 font-semibold">S.No</th>
+                      <th className="w-[38%] px-3 py-2.5 font-semibold">Equipment Name</th>
+                      <th className="w-[29%] px-3 py-2.5 font-semibold">Type of Operations</th>
+                      <th className="w-[23%] px-3 py-2.5 font-semibold">Type of Control</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {sheltonEquipmentRows.map((equipment, index) => (
+                      <tr
+                        key={equipment.id}
+                        className={`border-t border-slate-200 ${index % 2 === 0 ? "bg-white" : "bg-slate-50/55"}`}
+                      >
+                        <td className="px-3 py-2.5 align-top text-[13px] font-medium leading-5 text-gray-600">
+                          {equipment.serialNo ?? index + 1}
+                        </td>
+                        <td className="px-3 py-2.5 align-top">
+                          <button
+                            type="button"
+                            onClick={() => setActiveEquipment(equipment)}
+                            className="group block w-full text-left"
+                            aria-label={`Open ${equipment.equipmentName} details`}
+                          >
+                            <span className="inline-flex items-start gap-1 text-sm font-medium leading-5 text-gray-900 transition group-hover:text-indigo-600">
+                              <span className="truncate">{equipment.equipmentName}</span>
+                              <FiChevronRight className="mt-[2px] shrink-0 text-sm text-gray-400 transition group-hover:text-indigo-600" />
+                            </span>
+                            <span className="mt-0.5 block text-[11px] leading-4 text-gray-500">{equipment.processName}</span>
+                          </button>
+                        </td>
+                        <td className="px-3 py-2.5 align-top text-[13px] leading-5 text-gray-700">{equipment.operationType}</td>
+                        <td className="px-3 py-2.5 align-top text-[13px] leading-5 text-gray-700">{equipment.controlType}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
