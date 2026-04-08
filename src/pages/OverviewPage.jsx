@@ -942,8 +942,8 @@ export default function OverviewPage() {
   const consumerTypesBar = useMemo(() => {
     const cfg =
       tab === "Industrial"
-        ? ["Manufacturing", "Agro", "Food", "Others"]
-        : ["Retail", "Offices", "Hospitality", "Others"];
+        ? ["Manufacturing", "Agro", "Food", "Others", "Textile", "Chemical", "Pharma", "Metal", "Construction", "Energy"]
+        : ["Retail", "Offices", "Hospitality", "Others", "Healthcare", "Education", "Finance", "Logistics", "Tech", "Manufacturing"];
 
     const series = cfg.map((label) => seededInt(`${seed}|consumerTypes|${label}`, 20, 110));
     return {
