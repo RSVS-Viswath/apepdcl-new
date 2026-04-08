@@ -99,7 +99,8 @@ function EquipmentModal({ equipment, onClose }) {
         </div>
 
         <div className="max-h-[75vh] overflow-auto px-5 py-5">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="min-w-full overflow-x-auto">
+            <div className="grid gap-3 md:grid-cols-2">
             {infoGroups.map((group) => (
               <section key={group.title} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                 <h3 className="text-sm font-semibold text-gray-900">{group.title}</h3>
@@ -218,8 +219,9 @@ export default function ProcessPage() {
               <h2 className="text-sm font-semibold text-gray-900">Process Equipment List</h2>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <table className="min-w-full table-fixed text-sm">
+            <div className="min-h-0 flex-1 overflow-x-auto">
+              <div className="min-w-full">
+                <table className="min-w-full table-fixed text-sm">
                 <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.08em] text-gray-500">
                   <tr>
                     <th className="w-[10%] px-3 py-2.5 font-semibold">S.No</th>

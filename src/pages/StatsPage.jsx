@@ -546,9 +546,10 @@ export default function StatsPage() {
             <FiMaximize2 className="text-[16px]" />
           </button>
         </div>
-        <div className="flex-1 min-h-0 bg-gray-50 rounded-lg overflow-auto">
-          <table className="w-full text-[13px] border border-gray-200 border-collapse bg-white">
-            <thead className="text-gray-600 bg-[#f6f3ff] sticky top-0 z-10">
+        <div className="flex-1 min-h-0 bg-gray-50 rounded-lg overflow-hidden">
+          <div className="min-w-full overflow-x-auto">
+            <table className="w-full text-[13px] border border-gray-200 border-collapse bg-white">
+              <thead className="text-gray-600 bg-[#f6f3ff] sticky top-0 z-10">
               <tr className="text-left">
                 <th className="py-1.5 px-2 whitespace-nowrap font-medium border border-gray-200">
                   Date
@@ -571,6 +572,7 @@ export default function StatsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
         <div className="text-xs text-gray-500 mt-1 shrink-0">Click a row to load that day's stats.</div>
       </div>

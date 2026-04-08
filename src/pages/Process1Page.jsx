@@ -1095,7 +1095,7 @@ export default function Process1Page() {
           <div className="border-b border-slate-200 px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sunpath Visual</div>
           </div>
-          <div className="relative h-[320px] bg-slate-950">
+          <div className="relative h-[220px] md:h-[320px] bg-slate-950">
             <video
               className="pointer-events-none block h-full w-full object-contain"
               src={SUNPATH_VIDEO_SRC}
@@ -1113,7 +1113,7 @@ export default function Process1Page() {
           <div className="border-b border-slate-200 px-4 py-3">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Radiation Analysis</div>
           </div>
-          <div className="relative h-[320px] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef2ff_55%,#e2e8f0_100%)]">
+          <div className="relative h-[220px] md:h-[320px] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef2ff_55%,#e2e8f0_100%)]">
             <img src={MODEL_IMAGE_SRC} alt="Pajson Agro 3D model view" className="h-full w-full object-contain" loading="lazy" />
             <div className="absolute bottom-6 left-6 rounded-[32px] border border-slate-200/80 bg-white px-4 py-3 shadow-2xl shadow-slate-300/20">
               <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Solar Radiation Level (kWh/m²)</div>
@@ -1160,7 +1160,7 @@ export default function Process1Page() {
           }}
         >
           <div
-            className="flex h-[460px] w-full max-w-[860px] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl max-h-[84vh]"
+            className="flex h-[360px] md:h-[460px] w-full max-w-[860px] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl max-h-[84vh]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
@@ -1280,7 +1280,7 @@ export default function Process1Page() {
       {isLoadChartModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={() => setIsLoadChartModalOpen(false)}>
           <div
-            className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-6xl flex-col min-h-0 overflow-hidden rounded-[24px] bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">

@@ -865,7 +865,7 @@ function AndhraConsumerMap({ consumers, onConsumerClick, tab }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200">
-        <div ref={mapContainerRef} className="h-[560px] w-full" />
+        <div ref={mapContainerRef} className="h-[260px] md:h-[420px] lg:h-[560px] w-full" />
       </div>
     </div>
   );
@@ -967,11 +967,8 @@ export default function OverviewPage() {
           labels: { style: { colors: ["#475569"], fontSize: "12px" } },
         },
         tooltip: {
-          custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-            const value = series[0][dataPointIndex];
-            const category = w.globals.labels[dataPointIndex];
-            return `<div>${category}: ${value.toLocaleString()} consumers</div>`;
-          },
+          theme: "light",
+          fillSeriesColor: false,
         },
         legend: { show: false },
         colors: [TEAL],
