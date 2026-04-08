@@ -939,23 +939,35 @@ export default function OverviewPage() {
     };
   }, [filteredConsumers]);
 
-  const pie = useMemo(() => {
+  const consumerTypesBar = useMemo(() => {
     const cfg =
       tab === "Industrial"
         ? ["Manufacturing", "Agro", "Food", "Others"]
-        : tab === "Commercial"
-          ? ["Retail", "Offices", "Hospitality", "Others"]
-          : ["Industrial", "Commercial", "Public", "Others"];
+        : ["Retail", "Offices", "Hospitality", "Others"];
 
-    const series = cfg.map((label) => seededInt(`${seed}|pie|${label}`, 10, 65));
+    const series = cfg.map((label) => seededInt(`${seed}|consumerTypes|${label}`, 20, 110));
     return {
-      series,
+      series: [{ name: "Consumers", data: series }],
       options: {
-        chart: { type: "pie", toolbar: { show: false } },
-        labels: cfg,
+        chart: { type: "bar", toolbar: { show: false } },
+        plotOptions: {
+          bar: {
+            horizontal: true,
+            barHeight: "60%",
+            borderRadius: 6,
+            borderRadiusApplication: "end",
+          },
+        },
         dataLabels: { enabled: false },
-        legend: { position: "bottom" },
-        colors: [TEAL, PURPLE, tint(TEAL, 0.45), tint(PURPLE, 0.45)],
+        xaxis: {
+          categories: cfg,
+          labels: { style: { colors: ["#475569"], fontSize: "12px" } },
+        },
+        yaxis: {
+          labels: { style: { colors: ["#475569"], fontSize: "12px" } },
+        },
+        legend: { show: false },
+        colors: [TEAL],
       },
     };
   }, [seed, tab]);
@@ -1132,7 +1144,12 @@ export default function OverviewPage() {
             ) : (
               <>
                 <div className="text-sm font-semibold mb-2">Types of Consumers</div>
-                <Chart options={pie.options} series={pie.series} type="pie" height={220} />
+                <Chart
+                  options={consumerTypesBar.options}
+                  series={consumerTypesBar.series}
+                  type="bar"
+                  height={220}
+                />
               </>
             )}
           </div>
