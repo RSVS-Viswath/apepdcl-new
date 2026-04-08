@@ -256,8 +256,8 @@ function ProcessNode({ processKey, group, active, onClick }) {
       style={{ backgroundColor: "#f3f4f6" }}
     >
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 shadow-sm"
-        style={{ color: "#6b7280" }}
+        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm"
+        style={missing ? { color: "#6b7280", backgroundColor: "#e2e8f0" } : { color: tone.text, backgroundColor: tone.color }}
       >
         <Icon className="text-[15px]" />
       </span>
@@ -556,58 +556,11 @@ export default function Process1Page() {
   const loadChartCategories = useMemo(() => buildUniqueLabels(selectedEquipment), [selectedEquipment]);
   const modalLoadChartWidth = Math.max(920, selectedEquipment.length * 110);
 
-  const loadChartOptions = useMemo(
-    () => ({
-      chart: {
-        toolbar: { show: false },
-        fontFamily: "sans-serif",
-      },
-      colors: [PURPLE],
-      plotOptions: {
-        bar: {
-          borderRadius: 4,
-          columnWidth: "44%",
-          distributed: true,
-        },
-      },
-      dataLabels: { enabled: false },
-      legend: { show: false },
-      xaxis: {
-        categories: loadChartCategories,
-        labels: {
-          rotate: -38,
-          hideOverlappingLabels: true,
-          trim: true,
-          style: { colors: "#64748b", fontSize: "10px" },
-        },
-        axisBorder: { show: false },
-        axisTicks: { show: false },
-      },
-      yaxis: {
-        title: {
-          text: "kW",
-          style: { color: "#64748b", fontSize: "11px", fontWeight: 600 },
-        },
-        labels: {
-          style: { colors: "#64748b", fontSize: "11px" },
-          formatter: (value) => Number(value).toFixed(0),
-        },
-      },
-      grid: {
-        borderColor: "#e2e8f0",
-        strokeDashArray: 4,
-      },
-      tooltip: {
-        y: {
-          formatter: (value) => formatKw(value),
-        },
-      },
-      states: {
-        hover: { filter: { type: "darken", value: 0.12 } },
-      },
-    }),
-    [loadChartCategories]
-  );
+  const loadChartYMax = useMemo(() => {
+    const values = selectedEquipment.map((item) => item.totalLoadKw);
+    const max = Math.max(...values, 0);
+    return max <= 0 ? 4 : Math.ceil(max * 1.2);
+  }, [selectedEquipment]);
 
   const loadChartModalOptions = useMemo(
     () => ({
@@ -637,6 +590,10 @@ export default function Process1Page() {
         axisTicks: { show: false },
       },
       yaxis: {
+        min: 0,
+        max: loadChartYMax,
+        tickAmount: 5,
+        forceNiceScale: true,
         title: {
           text: "kW",
           style: { color: "#64748b", fontSize: "12px", fontWeight: 600 },
@@ -659,7 +616,7 @@ export default function Process1Page() {
         hover: { filter: { type: "darken", value: 0.12 } },
       },
     }),
-    [loadChartCategories]
+    [loadChartCategories, loadChartYMax]
   );
 
   const loadChartSeries = useMemo(
@@ -836,7 +793,7 @@ export default function Process1Page() {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[1.7fr_0.62fr] lg:items-start lg:min-h-0">
+        <div className="grid gap-3 lg:grid-cols-[1.45fr_0.85fr] lg:items-start lg:min-h-0">
           <section ref={processFlowRef} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm lg:flex lg:flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -973,7 +930,7 @@ export default function Process1Page() {
           </section>
 
           <div
-            className="grid gap-3 lg:min-h-0 lg:grid-rows-[minmax(0,1fr)_172px]"
+            className="grid gap-3 lg:min-h-0"
             style={
               syncedProcessColumnHeight
                 ? { height: `${syncedProcessColumnHeight}px`, maxHeight: `${syncedProcessColumnHeight}px` }
@@ -1002,6 +959,15 @@ export default function Process1Page() {
                           : `${selectedProcessGroup.equipmentCount} units`
                         : "No units"}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsLoadChartModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
+                      style={{ backgroundColor: "var(--color-indigo-600)" }}
+                    >
+                      <FiBarChart2 className="text-[12px]" />
+                      View Load Chart
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1127,33 +1093,6 @@ export default function Process1Page() {
                 )}
               </div>
             </section>
-
-            <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Load Chart - Selected Process</div>
-                <button
-                  type="button"
-                  onClick={() => setIsLoadChartModalOpen(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-1.5 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
-                  aria-label="Expand load chart"
-                  title="Expand load chart"
-                >
-                  <FiMaximize2 className="text-[14px]" />
-                </button>
-              </div>
-              <div className="px-2 pb-2 pt-1">
-                <SafeChart
-                  resetKey={`load-${selectedProcess}-${selectedEquipment.length}`}
-                  options={loadChartOptions}
-                  series={loadChartSeries}
-                  type="bar"
-                  height={150}
-                  width="100%"
-                  fallbackHeight={150}
-                  fallbackText="Load chart unavailable"
-                />
-              </div>
-            </section>
           </div>
         </div>
       </section>
@@ -1161,11 +1100,9 @@ export default function Process1Page() {
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="border-b border-slate-200 px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Radiation Analysis</div>
-            <div className="mt-1 text-sm font-semibold text-gray-900">Pajson Agro</div>
-
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sunpath Visual</div>
           </div>
-          <div className="h-[320px] bg-slate-950">
+          <div className="relative h-[320px] bg-slate-950">
             <video
               className="pointer-events-none block h-full w-full object-contain"
               src={SUNPATH_VIDEO_SRC}
@@ -1176,23 +1113,30 @@ export default function Process1Page() {
               playsInline
               preload="auto"
             />
+            <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm">
+              Pajson Agro
+            </div>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-lg bg-white shadow">
           <div className="border-b border-slate-200 px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">3D Model View</div>
-            <div className="mt-1 text-sm font-semibold text-gray-900">Facility thermal render and rooftop exposure view</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Sun Radiation Analysis</div>
           </div>
           <div className="relative h-[320px] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef2ff_55%,#e2e8f0_100%)]">
             <img src={MODEL_IMAGE_SRC} alt="Pajson Agro 3D model view" className="h-full w-full object-contain" loading="lazy" />
-            <div className="absolute bottom-4 left-4 rounded-2xl border border-white/70 bg-white/88 px-3 py-2 shadow-lg backdrop-blur-sm">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Temperature Legend</div>
-              <div className="mt-2 h-3 w-40 rounded-full bg-[linear-gradient(90deg,#312e81_0%,#2563eb_18%,#38bdf8_36%,#fde047_62%,#fb923c_82%,#dc2626_100%)]" />
-              <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-slate-600">
-                <span>Cool</span>
-                <span>Moderate</span>
-                <span>Hot</span>
+            <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm">
+              Pajson Agro
+            </div>
+            <div className="absolute bottom-6 left-6 rounded-[32px] border border-slate-200/80 bg-white px-4 py-3 shadow-2xl shadow-slate-300/20">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Solar Radiation Level (kWh/m²)</div>
+              <div className="mt-2 h-3 w-[220px] rounded-full bg-[linear-gradient(90deg,#312e81_0%,#2563eb_18%,#38bdf8_36%,#fde047_62%,#fb923c_82%,#dc2626_100%)]" />
+              <div className="mt-2 grid grid-cols-5 text-[10px] font-semibold text-slate-600">
+                <span className="text-left">0</span>
+                <span className="text-center">400</span>
+                <span className="text-center">800</span>
+                <span className="text-center">1200</span>
+                <span className="text-right">1600</span>
               </div>
             </div>
           </div>
