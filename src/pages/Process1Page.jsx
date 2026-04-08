@@ -793,7 +793,7 @@ export default function Process1Page() {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[1.45fr_0.85fr] lg:items-start lg:min-h-0">
+        <div className="grid gap-3 lg:grid-cols-[3fr_1fr] lg:items-start lg:min-h-0">
           <section ref={processFlowRef} className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm lg:flex lg:flex-col">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div className="flex flex-wrap items-center gap-3">
