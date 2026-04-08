@@ -826,7 +826,7 @@ export default function Process1Page() {
             <div className="flex min-h-0 flex-1 px-4 py-4 overflow-auto">
               {viewMode === "process" ? (
                 <div className="overflow-auto w-full">
-                  <div className="mx-auto w-full max-w-[930px] space-y-4">
+                  <div className="w-full space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="min-w-[150px] flex-1">
@@ -955,7 +955,7 @@ export default function Process1Page() {
                     <button
                       type="button"
                       onClick={() => setIsLoadChartModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
+                      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold text-white whitespace-nowrap"
                       style={{ backgroundColor: "var(--color-indigo-600)" }}
                     >
                       <FiBarChart2 className="text-[12px]" />
