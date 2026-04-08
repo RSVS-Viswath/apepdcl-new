@@ -966,6 +966,13 @@ export default function OverviewPage() {
         yaxis: {
           labels: { style: { colors: ["#475569"], fontSize: "12px" } },
         },
+        tooltip: {
+          custom: ({ series, seriesIndex, dataPointIndex, w }) => {
+            const value = series[0][dataPointIndex];
+            const category = w.globals.labels[dataPointIndex];
+            return `<div>${category}: ${value.toLocaleString()} consumers</div>`;
+          },
+        },
         legend: { show: false },
         colors: [TEAL],
       },
