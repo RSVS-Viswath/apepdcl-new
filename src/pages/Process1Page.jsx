@@ -1106,9 +1106,6 @@ export default function Process1Page() {
               playsInline
               preload="auto"
             />
-            <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm">
-              Pajson Agro
-            </div>
           </div>
         </div>
 
@@ -1118,9 +1115,6 @@ export default function Process1Page() {
           </div>
           <div className="relative h-[320px] overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff_0%,#eef2ff_55%,#e2e8f0_100%)]">
             <img src={MODEL_IMAGE_SRC} alt="Pajson Agro 3D model view" className="h-full w-full object-contain" loading="lazy" />
-            <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-900 shadow-sm">
-              Pajson Agro
-            </div>
             <div className="absolute bottom-6 left-6 rounded-[32px] border border-slate-200/80 bg-white px-4 py-3 shadow-2xl shadow-slate-300/20">
               <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Solar Radiation Level (kWh/m²)</div>
               <div className="mt-2 h-3 w-[220px] rounded-full bg-[linear-gradient(90deg,#312e81_0%,#2563eb_18%,#38bdf8_36%,#fde047_62%,#fb923c_82%,#dc2626_100%)]" />
