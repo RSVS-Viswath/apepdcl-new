@@ -334,17 +334,17 @@ function buildDateCategories(startKey, endKey, maxPoints = 14) {
   return cats;
 }
 
-function StatCard({ label, value, suffix, icon }) {
+function StatCard({ label, value, suffix, icon, muted = false }) {
   return (
-    <div className="bg-white rounded-lg shadow px-4 py-3 h-[76px] flex items-center gap-3">
-      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
+    <div className={`rounded-lg shadow px-4 py-3 h-[76px] flex items-center gap-3 ${muted ? "bg-slate-50" : "bg-white"}`}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${muted ? "bg-slate-200 text-slate-400" : "bg-indigo-50 text-indigo-700"}`}>
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] text-gray-500 leading-tight truncate">{label}</div>
-        <div className="text-base font-semibold mt-1 tabular-nums leading-tight truncate">
+        <div className={`text-[13px] leading-tight truncate ${muted ? "text-slate-400" : "text-gray-500"}`}>{label}</div>
+        <div className={`text-base font-semibold mt-1 tabular-nums leading-tight truncate ${muted ? "text-slate-400" : "text-gray-900"}`}>
           {value}
-          {suffix ? <span className="text-xs text-gray-400 ml-1">{suffix}</span> : null}
+          {suffix ? <span className={`text-xs ml-1 ${muted ? "text-slate-300" : "text-gray-400"}`}>{suffix}</span> : null}
         </div>
       </div>
     </div>
@@ -462,6 +462,10 @@ function matchesTab(category, tab) {
   if (tab === "Industrial") return categoryText.includes("INDUSTRY");
   if (tab === "Commercial") return categoryText.includes("COMMERCIAL");
   return true;
+}
+
+function isActiveParticipant(serviceNo, scopeSeed) {
+  return seededNumber(`${scopeSeed}|participant|${serviceNo}`, 0, 1) > 0.34;
 }
 
 function AndhraConsumerMap({ consumers, onConsumerClick, tab }) {
@@ -885,8 +889,11 @@ export default function OverviewPage() {
   const tabParam = searchParams.get("tab");
   const districtParam = searchParams.get("district") || "All";
   const startParam = searchParams.get("startKey");
+  const participantScopeParam = searchParams.get("participantScope");
   const tab = OVERVIEW_TABS.includes(tabParam) ? tabParam : "All";
   const district = districtOptions.includes(districtParam) ? districtParam : "All";
+  const participantScope = participantScopeParam === "active" ? "active" : "all";
+  const isAllParticipantsMode = participantScope === "all";
   const startKey =
     startParam && !Number.isNaN(fromDateKey(startParam).getTime())
       ? startParam > todayKey
@@ -895,13 +902,22 @@ export default function OverviewPage() {
       : defaultStart;
   const endKey = todayKey;
 
-  const seed = `${startKey}|${endKey}|${tab}|${district}`;
-  const leaderboardSeed = `${startKey}|${endKey}|leaderboard|${district}`;
+  const participantScopeSeed = `${startKey}|${endKey}|${district}|${participantScope}`;
+  const seed = `${startKey}|${endKey}|${tab}|${district}|${participantScope}`;
+  const leaderboardSeed = `${startKey}|${endKey}|leaderboard|${district}|${participantScope}`;
   const categories = useMemo(() => buildDateCategories(startKey, endKey), [endKey, startKey]);
-  const filteredConsumers = useMemo(() => {
+  const districtConsumers = useMemo(() => {
     if (district === "All") return allConsumers;
     return allConsumers.filter((consumer) => String(consumer.serviceNo).slice(0, 3).toUpperCase() === district);
   }, [allConsumers, district]);
+  const filteredConsumers = useMemo(() => {
+    if (participantScope === "all") return districtConsumers;
+    return districtConsumers.filter((consumer) => isActiveParticipant(consumer.serviceNo, participantScopeSeed));
+  }, [districtConsumers, participantScope, participantScopeSeed]);
+  const tabScopedConsumers = useMemo(
+    () => filteredConsumers.filter((consumer) => matchesTab(consumer.category, tab)),
+    [filteredConsumers, tab]
+  );
   const mapConsumers = useMemo(
     () =>
       allConsumers
@@ -916,13 +932,18 @@ export default function OverviewPage() {
 
   const stats = useMemo(() => {
     const tabBoost = tab === "All" ? 1 : 0.65;
+    const scopeBoost = participantScope === "active" ? 0.68 : 1;
+    const scopedParticipantCount = tab === "All" ? filteredConsumers.length : tabScopedConsumers.length;
     return {
-      activeParticipants: seededInt(`${seed}|ap`, 2400, Math.round(9800 * tabBoost)),
-      totalPeakUnits: Math.round(seededNumber(`${seed}|tpu`, 28_000, 96_000) * tabBoost),
-      shiftedPeakUnits: Math.round(seededNumber(`${seed}|spu`, 320, 1760) * tabBoost),
-      participationRate: Math.round(seededNumber(`${seed}|pr`, 22, 88)),
+      activeParticipants:
+        participantScope === "active"
+          ? scopedParticipantCount
+          : Math.max(scopedParticipantCount, seededInt(`${seed}|ap`, 2400, Math.round(9800 * tabBoost))),
+      totalPeakUnits: Math.round(seededNumber(`${seed}|tpu`, 28_000, 96_000) * tabBoost * scopeBoost),
+      shiftedPeakUnits: isAllParticipantsMode ? null : Math.round(seededNumber(`${seed}|spu`, 320, 1760) * tabBoost),
+      participationRate: isAllParticipantsMode ? null : Math.round(seededNumber(`${seed}|pr`, 22, 88)),
     };
-  }, [seed, tab]);
+  }, [filteredConsumers.length, isAllParticipantsMode, participantScope, seed, tab, tabScopedConsumers.length]);
 
   const consumerSplitPie = useMemo(() => {
     const industrialCount = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY")).length;
@@ -945,7 +966,8 @@ export default function OverviewPage() {
         ? ["Manufacturing", "Agro", "Food", "Others", "Textile", "Chemical", "Pharma", "Metal", "Construction", "Energy"]
         : ["Retail", "Offices", "Hospitality", "Others", "Healthcare", "Education", "Finance", "Logistics", "Tech", "Manufacturing"];
 
-    const series = cfg.map((label) => seededInt(`${seed}|consumerTypes|${label}`, 20, 110));
+    const scopeScale = participantScope === "active" ? 0.62 : 1;
+    const series = cfg.map((label) => Math.max(8, Math.round(seededInt(`${seed}|consumerTypes|${label}`, 20, 110) * scopeScale)));
     return {
       series: [{ name: "Consumers", data: series }],
       options: {
@@ -974,7 +996,7 @@ export default function OverviewPage() {
         colors: [TEAL],
       },
     };
-  }, [seed, tab]);
+  }, [participantScope, seed, tab]);
 
   const todColors = useMemo(
     () => ({
@@ -1012,8 +1034,9 @@ export default function OverviewPage() {
 
     if (tab === "Industrial") {
       const labels = ["Peak 1", "Peak 2", "Non-Peak", "Off-Peak"];
+      const scopeScale = participantScope === "active" ? 0.64 : 1;
       return {
-        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
+        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000) * scopeScale),
         options: {
           chart: { type: "pie", toolbar: { show: false } },
           labels,
@@ -1027,8 +1050,9 @@ export default function OverviewPage() {
 
     if (tab === "Commercial") {
       const labels = ["Peak", "Off-Peak"];
+      const scopeScale = participantScope === "active" ? 0.64 : 1;
       return {
-        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
+        series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000) * scopeScale),
         options: {
           chart: { type: "pie", toolbar: { show: false } },
           labels,
@@ -1041,8 +1065,9 @@ export default function OverviewPage() {
     }
 
     const labels = ["Peak", "Non-Peak"];
+    const scopeScale = participantScope === "active" ? 0.64 : 1;
     return {
-      series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000)),
+      series: labels.map((label) => seededNumber(`${seed}|tod|${label}`, 18_000, 110_000) * scopeScale),
       options: {
         chart: { type: "pie", toolbar: { show: false } },
         labels,
@@ -1052,11 +1077,12 @@ export default function OverviewPage() {
         colors: [todColors.peak1, todColors.offPeak],
       },
     };
-  }, [seed, tab, todColors]);
+  }, [participantScope, seed, tab, todColors]);
 
   const peakVsNonPeak = useMemo(() => {
-    const peakUnits = categories.map((k, i) => seededInt(`${seed}|bar|peak|${k}|${i}`, 320, 980));
-    const normalUnits = categories.map((k, i) => seededInt(`${seed}|bar|normal|${k}|${i}`, 540, 1380));
+    const scopeScale = participantScope === "active" ? 0.66 : 1;
+    const peakUnits = categories.map((k, i) => Math.round(seededInt(`${seed}|bar|peak|${k}|${i}`, 320, 980) * scopeScale));
+    const normalUnits = categories.map((k, i) => Math.round(seededInt(`${seed}|bar|normal|${k}|${i}`, 540, 1380) * scopeScale));
     const totals = peakUnits.map((value, index) => value + normalUnits[index]);
     return {
       series: [
@@ -1088,7 +1114,7 @@ export default function OverviewPage() {
         },
       },
     };
-  }, [categories, seed]);
+  }, [categories, participantScope, seed]);
 
   const leaderboards = useMemo(() => {
     const industrial = filteredConsumers.filter((c) => String(c.category).toUpperCase().includes("INDUSTRY"));
@@ -1133,12 +1159,24 @@ export default function OverviewPage() {
           suffix="kWh"
           icon={<FiTrendingUp />}
         />
-        <StatCard label="Shifted Peak Units" value={stats.shiftedPeakUnits.toLocaleString()} suffix="kWh" icon={<FiActivity />} />
-        <StatCard label="Participation Rate" value={stats.participationRate} suffix="%" icon={<FiPercent />} />
+        <StatCard
+          label="Shifted Peak Units"
+          value={stats.shiftedPeakUnits == null ? "--" : stats.shiftedPeakUnits.toLocaleString()}
+          suffix="kWh"
+          icon={<FiActivity />}
+          muted={isAllParticipantsMode}
+        />
+        <StatCard
+          label="Participation Rate"
+          value={stats.participationRate == null ? "--" : stats.participationRate}
+          suffix="%"
+          icon={<FiPercent />}
+          muted={isAllParticipantsMode}
+        />
       </div>
 
       <div className="space-y-3">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:items-stretch">
+        <div className={`grid grid-cols-1 gap-3 lg:items-stretch ${isAllParticipantsMode ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
           <div className="bg-white rounded-lg shadow p-3 h-full">
             {tab === "All" ? (
               <>
@@ -1172,28 +1210,32 @@ export default function OverviewPage() {
             )}
           </div>
 
-          <LeaderboardTable
-            className="h-full"
-            title="Industrial Consumer Leaderboard"
-            rows={leaderboards.industrialRows}
-            onRowClick={onRowClick}
-            onViewMore={() => navigate("/monitor?tab=industrial")}
-          />
+          {!isAllParticipantsMode ? (
+            <LeaderboardTable
+              className="h-full"
+              title="Industrial Consumer Leaderboard"
+              rows={leaderboards.industrialRows}
+              onRowClick={onRowClick}
+              onViewMore={() => navigate("/monitor?tab=industrial")}
+            />
+          ) : null}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:items-stretch">
-          <div className="bg-white rounded-lg shadow p-3 lg:col-span-2 h-full">
+        <div className={`grid grid-cols-1 gap-3 lg:items-stretch ${isAllParticipantsMode ? "lg:grid-cols-1" : "lg:grid-cols-3"}`}>
+          <div className={`bg-white rounded-lg shadow p-3 h-full ${isAllParticipantsMode ? "" : "lg:col-span-2"}`}>
             <div className="text-sm font-semibold mb-2">Peak vs Non-Peak (Last 14 Days)</div>
             <Chart options={peakVsNonPeak.options} series={peakVsNonPeak.series} type="bar" height={235} />
           </div>
 
-          <LeaderboardTable
-            className="h-full"
-            title="Commercial Consumer Leaderboard"
-            rows={leaderboards.commercialRows}
-            onRowClick={onRowClick}
-            onViewMore={() => navigate("/monitor?tab=commercial")}
-          />
+          {!isAllParticipantsMode ? (
+            <LeaderboardTable
+              className="h-full"
+              title="Commercial Consumer Leaderboard"
+              rows={leaderboards.commercialRows}
+              onRowClick={onRowClick}
+              onViewMore={() => navigate("/monitor?tab=commercial")}
+            />
+          ) : null}
         </div>
 
         <AndhraConsumerMap consumers={mapConsumers} onConsumerClick={onRowClick} tab={tab} />

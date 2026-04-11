@@ -294,6 +294,22 @@ function OverviewModeToggle({ isListMode, onToggle }) {
   );
 }
 
+function ParticipantScopeControl({ value, onChange }) {
+  return (
+    <label className="flex items-center gap-2 bg-white rounded-lg shadow px-3 h-10 text-sm">
+      <span className="text-gray-500 whitespace-nowrap">Participants</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent text-sm font-medium text-gray-900 outline-none"
+      >
+        <option value="all">All</option>
+        <option value="active">Active Participants</option>
+      </select>
+    </label>
+  );
+}
+
 function OverviewControls({ tab, district, startKey, todayKey, districtOptions, onTabChange, onDistrictChange, onStartKeyChange }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -342,7 +358,7 @@ function OverviewControls({ tab, district, startKey, todayKey, districtOptions, 
   );
 }
 
-function MonitorControls({ tab, district, districtOptions, onTabChange, onDistrictChange }) {
+function MonitorControls({ tab, district, districtOptions, participantScope, onTabChange, onDistrictChange, onParticipantScopeChange }) {
   const tabs = [
     { key: "all", label: "All" },
     { key: "industrial", label: "Industrial" },
@@ -380,6 +396,8 @@ function MonitorControls({ tab, district, districtOptions, onTabChange, onDistri
           ))}
         </select>
       </label>
+
+      <ParticipantScopeControl value={participantScope} onChange={onParticipantScopeChange} />
     </div>
   );
 }
@@ -454,10 +472,14 @@ export default function DashboardHeader() {
   const overviewTabParam = searchParams.get("tab");
   const overviewDistrictParam = searchParams.get("district") || "All";
   const overviewStartParam = searchParams.get("startKey");
+  const overviewParticipantScopeParam = searchParams.get("participantScope");
   const monitorDistrictParam = searchParams.get("district") || "All";
+  const monitorParticipantScopeParam = searchParams.get("participantScope");
   const overviewTab = OVERVIEW_TABS.includes(overviewTabParam) ? overviewTabParam : "All";
   const overviewDistrict = overviewDistrictOptions.includes(overviewDistrictParam) ? overviewDistrictParam : "All";
+  const overviewParticipantScope = overviewParticipantScopeParam === "active" ? "active" : "all";
   const monitorDistrict = monitorDistrictOptions.includes(monitorDistrictParam) ? monitorDistrictParam : "All";
+  const monitorParticipantScope = monitorParticipantScopeParam === "active" ? "active" : "all";
   const overviewStartKey =
     overviewStartParam && !Number.isNaN(fromDateKey(overviewStartParam).getTime())
       ? overviewStartParam > todayKey
@@ -473,7 +495,12 @@ export default function DashboardHeader() {
         : statsDayParam
       : todayKey;
 
-  const applyOverviewFilters = ({ tab = overviewTab, district = overviewDistrict, startKey = overviewStartKey }) => {
+  const applyOverviewFilters = ({
+    tab = overviewTab,
+    district = overviewDistrict,
+    startKey = overviewStartKey,
+    participantScope = overviewParticipantScope,
+  }) => {
     const normalizedStartKey =
       startKey && !Number.isNaN(fromDateKey(startKey).getTime())
         ? startKey > todayKey
@@ -491,6 +518,9 @@ export default function DashboardHeader() {
     if (normalizedStartKey === defaultOverviewStart) next.delete("startKey");
     else next.set("startKey", normalizedStartKey);
 
+    if (participantScope === "all") next.delete("participantScope");
+    else next.set("participantScope", participantScope);
+
     setSearchParams(next);
   };
   const applyStatsDay = (dayKey) => {
@@ -505,13 +535,16 @@ export default function DashboardHeader() {
     else next.set("day", normalizedDay);
     setSearchParams(next);
   };
-  const applyMonitorFilters = ({ tab = monitorTab, district = monitorDistrict }) => {
+  const applyMonitorFilters = ({ tab = monitorTab, district = monitorDistrict, participantScope = monitorParticipantScope }) => {
     const next = new URLSearchParams(searchParams);
     if (tab === "all") next.delete("tab");
     else next.set("tab", tab);
 
     if (district === "All") next.delete("district");
     else next.set("district", district);
+
+    if (participantScope === "all") next.delete("participantScope");
+    else next.set("participantScope", participantScope);
 
     setSearchParams(next);
   };
@@ -575,7 +608,13 @@ export default function DashboardHeader() {
             <nav className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-2 w-full xl:w-auto">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
               {isOverviewActive ? (
-                <OverviewModeToggle isListMode={false} onToggle={() => navigate("/monitor")} />
+                <>
+                  <ParticipantScopeControl
+                    value={overviewParticipantScope}
+                    onChange={(participantScope) => applyOverviewFilters({ participantScope })}
+                  />
+                  <OverviewModeToggle isListMode={false} onToggle={() => navigate("/monitor")} />
+                </>
               ) : null}
 
               {isMonitorActive ? (
@@ -619,8 +658,10 @@ export default function DashboardHeader() {
                     tab={monitorTab}
                     district={monitorDistrict}
                     districtOptions={monitorDistrictOptions}
+                    participantScope={monitorParticipantScope}
                     onTabChange={(tab) => applyMonitorFilters({ tab })}
                     onDistrictChange={(district) => applyMonitorFilters({ district })}
+                    onParticipantScopeChange={(participantScope) => applyMonitorFilters({ participantScope })}
                   />
                 ) : isProcessPage ? null : (
                   <>

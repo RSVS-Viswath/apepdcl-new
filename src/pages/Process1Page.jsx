@@ -104,51 +104,39 @@ function getProcessActiveStatus(processKey) {
 
 function SleepingBotIcon() {
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 shadow-sm">
       <svg
-        width="18"
-        height="18"
+        width="14"
+        height="14"
         viewBox="0 0 24 24"
         fill="none"
         className="animate-breathing-bot"
         style={{ transformOrigin: "center" }}
+        aria-hidden="true"
       >
         <defs>
           <style>{`
-            .sleeping-bot-body { fill: #9ca3af; }
-            .sleeping-bot-line { stroke: #6b7280; stroke-width: 1.5; stroke-linecap: round; }
+            .sleeping-bot-shell { fill: #d8e1ea; stroke: #64748b; stroke-width: 1.35; stroke-linejoin: round; }
+            .sleeping-bot-accent { fill: #b8c5d3; stroke: #64748b; stroke-width: 1.1; stroke-linejoin: round; }
+            .sleeping-bot-line { stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
           `}</style>
         </defs>
-        {/* Robot head/body */}
-        <rect x="6" y="7" width="12" height="11" rx="2" className="sleeping-bot-body" />
-        {/* Antenna */}
-        <circle cx="12" cy="6" r="1.2" className="sleeping-bot-body" />
-        <line x1="12" y1="6" x2="12" y2="2.5" className="sleeping-bot-line" />
-        {/* Left eye (closed/sleepy) */}
-        <path
-          d="M 9.5 10.5 Q 9.5 11.5 10.5 11.5 Q 11.5 11.5 11.5 10.5"
-          className="sleeping-bot-line"
-          fill="none"
-        />
-        {/* Right eye (closed/sleepy) */}
-        <path
-          d="M 12.5 10.5 Q 12.5 11.5 13.5 11.5 Q 14.5 11.5 14.5 10.5"
-          className="sleeping-bot-line"
-          fill="none"
-        />
-        {/* Mouth (slight smile) */}
-        <path d="M 9 13.5 Q 12 14.5 15 13.5" className="sleeping-bot-line" fill="none" />
+        <path d="M9.5 4.4h5" className="sleeping-bot-line" />
+        <path d="M12 4.4V2.7" className="sleeping-bot-line" />
+        <circle cx="12" cy="2.3" r="1.15" className="sleeping-bot-accent" />
+        <path d="M4.8 10.2h1.8v4.2H4.8a1.1 1.1 0 0 1-1.1-1.1v-2a1.1 1.1 0 0 1 1.1-1.1Z" className="sleeping-bot-accent" />
+        <path d="M17.4 10.2h1.8a1.1 1.1 0 0 1 1.1 1.1v2a1.1 1.1 0 0 1-1.1 1.1h-1.8v-4.2Z" className="sleeping-bot-accent" />
+        <rect x="6.2" y="6.1" width="11.6" height="11" rx="3.2" className="sleeping-bot-shell" />
+        <path d="M9 11c.65.75 1.45 1.1 2.35 1.1S12.95 11.75 13.6 11" className="sleeping-bot-line" />
+        <path d="M14.2 11c.62.75 1.35 1.1 2.2 1.1" className="sleeping-bot-line" />
+        <path d="M9.3 14.2h5.4" className="sleeping-bot-line" />
+        <path d="M9 17.2v2.1" className="sleeping-bot-line" />
+        <path d="M15 17.2v2.1" className="sleeping-bot-line" />
       </svg>
-      {/* ZZZ floating animation */}
       <span
-        className="absolute animate-zzz"
+        className="pointer-events-none absolute -right-1 -top-1 animate-zzz text-[7px] font-black uppercase leading-none text-slate-400"
         style={{
-          right: "-8px",
-          top: "-2px",
-          fontSize: "9px",
-          fontWeight: "bold",
-          color: "#9ca3af",
-          letterSpacing: "-1px",
+          letterSpacing: "-0.14em",
         }}
       >
         zzz
@@ -248,6 +236,17 @@ function OverviewStat({ label, value, icon, hint }) {
   );
 }
 
+function ProcessNameText({ text, className = "" }) {
+  return (
+    <span className="group/process-name relative block w-full min-w-0" title={text} aria-label={text}>
+      <span className={`block w-full min-w-0 truncate ${className}`}>{text}</span>
+      <span className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden w-max max-w-[240px] rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium leading-tight text-white shadow-lg group-hover/process-name:block">
+        {text}
+      </span>
+    </span>
+  );
+}
+
 class ChartErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -307,7 +306,7 @@ function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
       type="button"
       onClick={() => !missing && onClick(processKey)}
       disabled={missing}
-      className={`group relative flex min-h-[72px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
+      className={`group relative flex min-h-[56px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-2.5 pr-10 text-left transition ${
         missing
           ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-50"
           : active
@@ -323,9 +322,7 @@ function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
         <Icon className="text-[15px]" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold leading-tight" style={{ color: "#374151" }}>
-          {tone.label}
-        </span>
+        <ProcessNameText text={tone.label} className="block truncate text-[13px] font-semibold leading-tight text-[#374151]" />
       </span>
 
       <span
@@ -336,7 +333,7 @@ function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
       </span>
 
       {!missing && isProcessActive !== undefined && (
-        <div className="absolute right-3 top-3 shrink-0">
+        <div className="absolute right-2.5 top-2.5 shrink-0">
           {isProcessActive ? (
             <div
               className="h-3 w-3 rounded-full bg-green-500 animate-pulse-dot shadow-lg"
@@ -1029,7 +1026,7 @@ export default function Process1Page() {
                       <selectedProcessTone.icon className="text-[16px]" />
                     </span>
                     <div className="min-w-0">
-                      <div className="truncate text-[13px] font-semibold text-slate-900">{selectedProcessLabel}</div>
+                      <ProcessNameText text={selectedProcessLabel} className="truncate text-[13px] font-semibold text-slate-900" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1247,7 +1244,9 @@ export default function Process1Page() {
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Equipment Filters</div>
-                <div className="mt-1 text-base font-semibold text-slate-900">{selectedProcessLabel}</div>
+                <div className="mt-1">
+                  <ProcessNameText text={selectedProcessLabel} className="text-base font-semibold text-slate-900" />
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1367,7 +1366,9 @@ export default function Process1Page() {
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">Load Chart - Expanded View</div>
-                <div className="mt-1 text-base font-semibold text-slate-900">{selectedProcessLabel}</div>
+                <div className="mt-1">
+                  <ProcessNameText text={selectedProcessLabel} className="text-base font-semibold text-slate-900" />
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-sm text-slate-500">{selectedEquipment.length} items</div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAllConsumers } from "../lib/consumers";
+import { seededNumber, seededShuffle } from "../lib/seeded";
 
 function Pagination({ activePage, onChange }) {
   const pages = [1, 2, 3, 4, 5];
@@ -38,8 +39,10 @@ export default function MonitorPage() {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const districtParam = searchParams.get("district") || "All";
+  const participantScopeParam = searchParams.get("participantScope");
   const selectedTab =
     tabParam === "industrial" ? "industrial" : tabParam === "commercial" ? "commercial" : "all";
+  const participantScope = participantScopeParam === "active" ? "active" : "all";
   const recordsRef = useRef(null);
 
   const [serviceSearch, setServiceSearch] = useState("");
@@ -70,8 +73,17 @@ export default function MonitorPage() {
         ? searched
         : searched.filter((r) => String(r.serviceNo).slice(0, 3).toUpperCase() === districtParam);
 
-    return districtFiltered;
-  }, [all, districtParam, selectedTab, serviceSearch]);
+    const seededRows = seededShuffle(
+      `${selectedTab}|${districtParam}|${participantScope}|${search}`,
+      districtFiltered.map((record) => ({ ...record }))
+    );
+
+    if (participantScope === "active") {
+      return seededRows.filter((r) => seededNumber(`${r.serviceNo}|participantScope|active`, 0, 1) > 0.34);
+    }
+
+    return seededRows;
+  }, [all, districtParam, participantScope, selectedTab, serviceSearch]);
 
   const onRowClick = (r) => {
     const qs = new URLSearchParams({

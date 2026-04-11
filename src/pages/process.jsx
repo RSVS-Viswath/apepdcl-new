@@ -33,7 +33,7 @@ function getEquipmentActiveStatus(equipment) {
 
 function SleepingBotIcon() {
   return (
-    <div className="relative inline-flex">
+    <div className="relative inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 shadow-sm">
       <svg
         width="14"
         height="14"
@@ -41,43 +41,31 @@ function SleepingBotIcon() {
         fill="none"
         className="animate-breathing-bot"
         style={{ transformOrigin: "center" }}
+        aria-hidden="true"
       >
         <defs>
           <style>{`
-            .sleeping-bot-body { fill: #9ca3af; }
-            .sleeping-bot-line { stroke: #6b7280; stroke-width: 1.5; stroke-linecap: round; }
+            .sleeping-bot-shell { fill: #d8e1ea; stroke: #64748b; stroke-width: 1.35; stroke-linejoin: round; }
+            .sleeping-bot-accent { fill: #b8c5d3; stroke: #64748b; stroke-width: 1.1; stroke-linejoin: round; }
+            .sleeping-bot-line { stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
           `}</style>
         </defs>
-        {/* Robot head/body */}
-        <rect x="6" y="7" width="12" height="11" rx="2" className="sleeping-bot-body" />
-        {/* Antenna */}
-        <circle cx="12" cy="6" r="1.2" className="sleeping-bot-body" />
-        <line x1="12" y1="6" x2="12" y2="2.5" className="sleeping-bot-line" />
-        {/* Left eye (closed/sleepy) */}
-        <path
-          d="M 9.5 10.5 Q 9.5 11.5 10.5 11.5 Q 11.5 11.5 11.5 10.5"
-          className="sleeping-bot-line"
-          fill="none"
-        />
-        {/* Right eye (closed/sleepy) */}
-        <path
-          d="M 12.5 10.5 Q 12.5 11.5 13.5 11.5 Q 14.5 11.5 14.5 10.5"
-          className="sleeping-bot-line"
-          fill="none"
-        />
-        {/* Mouth (slight smile) */}
-        <path d="M 9 13.5 Q 12 14.5 15 13.5" className="sleeping-bot-line" fill="none" />
+        <path d="M9.5 4.4h5" className="sleeping-bot-line" />
+        <path d="M12 4.4V2.7" className="sleeping-bot-line" />
+        <circle cx="12" cy="2.3" r="1.15" className="sleeping-bot-accent" />
+        <path d="M4.8 10.2h1.8v4.2H4.8a1.1 1.1 0 0 1-1.1-1.1v-2a1.1 1.1 0 0 1 1.1-1.1Z" className="sleeping-bot-accent" />
+        <path d="M17.4 10.2h1.8a1.1 1.1 0 0 1 1.1 1.1v2a1.1 1.1 0 0 1-1.1 1.1h-1.8v-4.2Z" className="sleeping-bot-accent" />
+        <rect x="6.2" y="6.1" width="11.6" height="11" rx="3.2" className="sleeping-bot-shell" />
+        <path d="M9 11c.65.75 1.45 1.1 2.35 1.1S12.95 11.75 13.6 11" className="sleeping-bot-line" />
+        <path d="M14.2 11c.62.75 1.35 1.1 2.2 1.1" className="sleeping-bot-line" />
+        <path d="M9.3 14.2h5.4" className="sleeping-bot-line" />
+        <path d="M9 17.2v2.1" className="sleeping-bot-line" />
+        <path d="M15 17.2v2.1" className="sleeping-bot-line" />
       </svg>
-      {/* ZZZ floating animation */}
       <span
-        className="absolute animate-zzz"
+        className="pointer-events-none absolute -right-1 -top-1 animate-zzz text-[7px] font-black uppercase leading-none text-slate-400"
         style={{
-          right: "-6px",
-          top: "-2px",
-          fontSize: "7px",
-          fontWeight: "bold",
-          color: "#9ca3af",
-          letterSpacing: "-1px",
+          letterSpacing: "-0.14em",
         }}
       >
         zzz
