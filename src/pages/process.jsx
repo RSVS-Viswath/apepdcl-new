@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiChevronRight, FiMapPin, FiX } from "react-icons/fi";
 import { sheltonEquipmentRows } from "../lib/processSheltonData";
+import { seededNumber } from "../lib/seeded";
 
 const MAP_EMBED_SRC =
   "https://www.google.com/maps?q=Hotel%20Shelton%20Rajamahendri%2C%20APSRTC%20Complex%20Road%2C%20Rajahmundry%2C%20Andhra%20Pradesh%20533103&output=embed";
@@ -20,6 +21,67 @@ function DetailItem({ label, value }) {
     <div className="rounded-lg bg-gray-50 px-3 py-2.5">
       <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">{label}</div>
       <div className="mt-1 text-sm font-medium leading-5 text-gray-900">{value}</div>
+    </div>
+  );
+}
+
+function getEquipmentActiveStatus(equipment) {
+  const seed = equipment.id || equipment.equipmentName;
+  const randomValue = seededNumber(seed);
+  return randomValue > 0.5;
+}
+
+function SleepingBotIcon() {
+  return (
+    <div className="relative inline-flex">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="animate-breathing-bot"
+        style={{ transformOrigin: "center" }}
+      >
+        <defs>
+          <style>{`
+            .sleeping-bot-body { fill: #9ca3af; }
+            .sleeping-bot-line { stroke: #6b7280; stroke-width: 1.5; stroke-linecap: round; }
+          `}</style>
+        </defs>
+        {/* Robot head/body */}
+        <rect x="6" y="7" width="12" height="11" rx="2" className="sleeping-bot-body" />
+        {/* Antenna */}
+        <circle cx="12" cy="6" r="1.2" className="sleeping-bot-body" />
+        <line x1="12" y1="6" x2="12" y2="2.5" className="sleeping-bot-line" />
+        {/* Left eye (closed/sleepy) */}
+        <path
+          d="M 9.5 10.5 Q 9.5 11.5 10.5 11.5 Q 11.5 11.5 11.5 10.5"
+          className="sleeping-bot-line"
+          fill="none"
+        />
+        {/* Right eye (closed/sleepy) */}
+        <path
+          d="M 12.5 10.5 Q 12.5 11.5 13.5 11.5 Q 14.5 11.5 14.5 10.5"
+          className="sleeping-bot-line"
+          fill="none"
+        />
+        {/* Mouth (slight smile) */}
+        <path d="M 9 13.5 Q 12 14.5 15 13.5" className="sleeping-bot-line" fill="none" />
+      </svg>
+      {/* ZZZ floating animation */}
+      <span
+        className="absolute animate-zzz"
+        style={{
+          right: "-6px",
+          top: "-2px",
+          fontSize: "7px",
+          fontWeight: "bold",
+          color: "#9ca3af",
+          letterSpacing: "-1px",
+        }}
+      >
+        zzz
+      </span>
     </div>
   );
 }
@@ -249,8 +311,21 @@ export default function ProcessPage() {
                             className="group block w-full text-left"
                             aria-label={`Open ${equipment.equipmentName} details`}
                           >
-                            <span className="inline-flex items-start gap-1 text-sm font-medium leading-5 text-gray-900 transition group-hover:text-indigo-600">
+                            <span className="inline-flex items-start gap-2 text-sm font-medium leading-5 text-gray-900 transition group-hover:text-indigo-600">
                               <span className="truncate">{equipment.equipmentName}</span>
+                              {getEquipmentActiveStatus(equipment) ? (
+                                <div
+                                  className="h-2 w-2 rounded-full bg-green-500 animate-pulse-dot shrink-0 mt-1.5"
+                                  style={{
+                                    boxShadow: "0 0 6px rgba(34, 197, 94, 0.6)",
+                                  }}
+                                  title="Active Equipment"
+                                />
+                              ) : (
+                                <span className="shrink-0 mt-0.5">
+                                  <SleepingBotIcon />
+                                </span>
+                              )}
                               <FiChevronRight className="mt-[2px] shrink-0 text-sm text-gray-400 transition group-hover:text-indigo-600" />
                             </span>
                             <span className="mt-0.5 block text-[11px] leading-4 text-gray-500">{equipment.processName}</span>

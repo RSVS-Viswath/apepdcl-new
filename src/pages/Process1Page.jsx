@@ -96,6 +96,67 @@ function formatCompactNumber(value) {
   return Number(value || 0).toLocaleString("en-IN");
 }
 
+function getProcessActiveStatus(processKey) {
+  const seed = processKey;
+  const randomValue = seededNumber(seed, 0, 1);
+  return randomValue > 0.45;
+}
+
+function SleepingBotIcon() {
+  return (
+    <div className="relative inline-flex">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="animate-breathing-bot"
+        style={{ transformOrigin: "center" }}
+      >
+        <defs>
+          <style>{`
+            .sleeping-bot-body { fill: #9ca3af; }
+            .sleeping-bot-line { stroke: #6b7280; stroke-width: 1.5; stroke-linecap: round; }
+          `}</style>
+        </defs>
+        {/* Robot head/body */}
+        <rect x="6" y="7" width="12" height="11" rx="2" className="sleeping-bot-body" />
+        {/* Antenna */}
+        <circle cx="12" cy="6" r="1.2" className="sleeping-bot-body" />
+        <line x1="12" y1="6" x2="12" y2="2.5" className="sleeping-bot-line" />
+        {/* Left eye (closed/sleepy) */}
+        <path
+          d="M 9.5 10.5 Q 9.5 11.5 10.5 11.5 Q 11.5 11.5 11.5 10.5"
+          className="sleeping-bot-line"
+          fill="none"
+        />
+        {/* Right eye (closed/sleepy) */}
+        <path
+          d="M 12.5 10.5 Q 12.5 11.5 13.5 11.5 Q 14.5 11.5 14.5 10.5"
+          className="sleeping-bot-line"
+          fill="none"
+        />
+        {/* Mouth (slight smile) */}
+        <path d="M 9 13.5 Q 12 14.5 15 13.5" className="sleeping-bot-line" fill="none" />
+      </svg>
+      {/* ZZZ floating animation */}
+      <span
+        className="absolute animate-zzz"
+        style={{
+          right: "-8px",
+          top: "-2px",
+          fontSize: "9px",
+          fontWeight: "bold",
+          color: "#9ca3af",
+          letterSpacing: "-1px",
+        }}
+      >
+        zzz
+      </span>
+    </div>
+  );
+}
+
 function getUnitCount(value) {
   const next = Number(value);
   return Number.isFinite(next) && next > 0 ? next : 1;
@@ -236,7 +297,7 @@ function SafeChart({ resetKey, fallbackHeight = 160, fallbackText = "Chart unava
   );
 }
 
-function ProcessNode({ processKey, group, active, onClick }) {
+function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
   const tone = getProcessTone(processKey);
   const Icon = tone.icon;
   const missing = !group;
@@ -246,7 +307,7 @@ function ProcessNode({ processKey, group, active, onClick }) {
       type="button"
       onClick={() => !missing && onClick(processKey)}
       disabled={missing}
-      className={`group flex min-h-[56px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
+      className={`group relative flex min-h-[72px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${
         missing
           ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-50"
           : active
@@ -256,7 +317,7 @@ function ProcessNode({ processKey, group, active, onClick }) {
       style={{ backgroundColor: "#f3f4f6" }}
     >
       <span
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm"
         style={missing ? { color: "#6b7280", backgroundColor: "#e2e8f0" } : { color: tone.text, backgroundColor: tone.color }}
       >
         <Icon className="text-[15px]" />
@@ -266,12 +327,29 @@ function ProcessNode({ processKey, group, active, onClick }) {
           {tone.label}
         </span>
       </span>
+
       <span
         className="shrink-0 rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-semibold tabular-nums shadow-sm"
         style={{ color: "#4b5563" }}
       >
         {group ? formatKw(group.totalLoadKw) : "--"}
       </span>
+
+      {!missing && isProcessActive !== undefined && (
+        <div className="absolute right-3 top-3 shrink-0">
+          {isProcessActive ? (
+            <div
+              className="h-3 w-3 rounded-full bg-green-500 animate-pulse-dot shadow-lg"
+              style={{
+                boxShadow: "0 0 8px rgba(34, 197, 94, 0.6)",
+              }}
+              title="Active Process"
+            />
+          ) : (
+            <SleepingBotIcon />
+          )}
+        </div>
+      )}
     </button>
   );
 }
@@ -830,7 +908,7 @@ export default function Process1Page() {
                     <div className="flex items-center gap-3">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="min-w-[150px] flex-1">
-                          <ProcessNode processKey="RCN" group={processGroups.RCN} active={selectedProcess === "RCN"} onClick={setSelectedProcess} />
+                          <ProcessNode processKey="RCN" group={processGroups.RCN} active={selectedProcess === "RCN"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("RCN")} />
                         </div>
                         <FlowArrow className="text-xl" />
                         <div className="min-w-[190px] flex-1">
@@ -839,11 +917,12 @@ export default function Process1Page() {
                             group={processGroups["DESTONER TO SIZING"]}
                             active={selectedProcess === "DESTONER TO SIZING"}
                             onClick={setSelectedProcess}
+                            isProcessActive={getProcessActiveStatus("DESTONER TO SIZING")}
                           />
                         </div>
                         <FlowArrow className="text-xl" />
                         <div className="min-w-[150px] flex-1">
-                          <ProcessNode processKey="COOKING" group={processGroups.COOKING} active={selectedProcess === "COOKING"} onClick={setSelectedProcess} />
+                          <ProcessNode processKey="COOKING" group={processGroups.COOKING} active={selectedProcess === "COOKING"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("COOKING")} />
                         </div>
                       </div>
                     </div>
@@ -854,7 +933,7 @@ export default function Process1Page() {
 
                     <div className="grid gap-3 md:grid-cols-4">
                       {["SHELLING-LINE-D", "SHELLING-LINE-C", "SHELLING-LINE-B", "SHELLING-LINE-A"].map((key) => (
-                        <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} />
+                        <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus(key)} />
                       ))}
                     </div>
 
@@ -876,6 +955,7 @@ export default function Process1Page() {
                         group={processGroups["SHELLING NEW LINE"]}
                         active={selectedProcess === "SHELLING NEW LINE"}
                         onClick={setSelectedProcess}
+                        isProcessActive={getProcessActiveStatus("SHELLING NEW LINE")}
                       />
                       <div className="flex justify-center">
                         <FlowArrow className="text-xl" />
@@ -885,11 +965,12 @@ export default function Process1Page() {
                         group={processGroups["SHELL YARD"]}
                         active={selectedProcess === "SHELL YARD"}
                         onClick={setSelectedProcess}
+                        isProcessActive={getProcessActiveStatus("SHELL YARD")}
                       />
                       <div className="flex justify-center">
                         <FlowArrow className="text-xl" />
                       </div>
-                      <ProcessNode processKey="SHELLING" group={processGroups.SHELLING} active={selectedProcess === "SHELLING"} onClick={setSelectedProcess} />
+                      <ProcessNode processKey="SHELLING" group={processGroups.SHELLING} active={selectedProcess === "SHELLING"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("SHELLING")} />
                     </div>
 
                     <div className="flex justify-end pr-[4.5%]">
@@ -897,15 +978,15 @@ export default function Process1Page() {
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
-                      <ProcessNode processKey="GRADING" group={processGroups.GRADING} active={selectedProcess === "GRADING"} onClick={setSelectedProcess} />
+                      <ProcessNode processKey="GRADING" group={processGroups.GRADING} active={selectedProcess === "GRADING"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("GRADING")} />
                       <div className="flex justify-center">
                         <FlowArrow direction="left" className="text-xl" />
                       </div>
-                      <ProcessNode processKey="PEELING" group={processGroups.PEELING} active={selectedProcess === "PEELING"} onClick={setSelectedProcess} />
+                      <ProcessNode processKey="PEELING" group={processGroups.PEELING} active={selectedProcess === "PEELING"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("PEELING")} />
                       <div className="flex justify-center">
                         <FlowArrow direction="left" className="text-xl" />
                       </div>
-                      <ProcessNode processKey="BORMA" group={processGroups.BORMA} active={selectedProcess === "BORMA"} onClick={setSelectedProcess} />
+                      <ProcessNode processKey="BORMA" group={processGroups.BORMA} active={selectedProcess === "BORMA"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("BORMA")} />
                     </div>
 
                     <div className="flex justify-start pl-[13%]">
@@ -913,7 +994,7 @@ export default function Process1Page() {
                     </div>
 
                     <div className="max-w-[280px]">
-                      <ProcessNode processKey="PACKING" group={processGroups.PACKING} active={selectedProcess === "PACKING"} onClick={setSelectedProcess} />
+                      <ProcessNode processKey="PACKING" group={processGroups.PACKING} active={selectedProcess === "PACKING"} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus("PACKING")} />
                     </div>
                   </div>
                 </div>
@@ -921,7 +1002,7 @@ export default function Process1Page() {
                 <div className="mx-auto w-full h-full max-w-[930px] flex flex-col">
                   <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4 auto-rows-max w-full h-full">
                     {UTILITY_FLOW.map((key) => (
-                      <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} />
+                      <ProcessNode key={key} processKey={key} group={processGroups[key]} active={selectedProcess === key} onClick={setSelectedProcess} isProcessActive={getProcessActiveStatus(key)} />
                     ))}
                   </div>
                 </div>
