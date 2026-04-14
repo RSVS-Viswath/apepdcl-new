@@ -4,6 +4,24 @@
   font-family: sans-serif;
 }
 
+.heatmap-apex-card .apexcharts-tooltip,
+.heatmap-apex-card .apexcharts-tooltip.apexcharts-theme-light,
+.heatmap-apex-card .apexcharts-tooltip.apexcharts-theme-dark {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.heatmap-apex-card .apexcharts-tooltip * {
+  box-sizing: border-box;
+}
+
+.heatmap-apex-card .apexcharts-tooltip-title {
+  display: none !important;
+}
+
 @keyframes soft-blink {
     0%, 100% {
       opacity: 1;
