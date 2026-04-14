@@ -185,11 +185,13 @@ export default function AnalyticsPage() {
         ? todayKey
         : selectedDayParam
       : todayKey;
+  const rangeParam = searchParams.get("range");
+  const selectedRange = rangeParam === "30" ? 30 : 7;
   const monthParam = searchParams.get("month");
   const weeklyMonth = /^\d{4}-\d{2}$/.test(String(monthParam || "")) ? monthParam : todayKey.slice(0, 7);
   const isCommercial = String(category).toUpperCase().includes("COMMERCIAL");
 
-  const chartDayKeys = useMemo(() => lastNDaysKeys(14, fromDateKey(selectedDayKey)), [selectedDayKey]);
+  const chartDayKeys = useMemo(() => lastNDaysKeys(selectedRange, fromDateKey(selectedDayKey)), [selectedDayKey, selectedRange]);
   const heatmapDayKeys = useMemo(() => lastNDaysKeys(30, fromDateKey(selectedDayKey)), [selectedDayKey]);
   const analyticsSeed = `${serviceNo}|${category}|${selectedDayKey}`;
 
@@ -330,7 +332,7 @@ export default function AnalyticsPage() {
         },
       ],
       options: {
-        chart: { type: "bar", toolbar: { show: false } },
+        chart: { type: "bar", toolbar: { show: false }, parentHeightOffset: 0 },
         plotOptions: {
           bar: {
             horizontal: true,
@@ -339,13 +341,34 @@ export default function AnalyticsPage() {
           },
         },
         dataLabels: { enabled: false },
-        grid: { show: false },
+        grid: {
+          show: false,
+          padding: {
+            left: 8,
+            right: 0,
+          },
+        },
         colors: [WEEKLY_BAR],
         xaxis: {
+          min: 0,
+          categories: weeklyData.map((item) => item.label),
+          max: Math.ceil(Math.max(...weeklyData.map((item) => item.value)) / 100) * 100,
           title: { text: "kWh", style: { fontWeight: 400 } },
+          labels: {
+            style: {
+              colors: ["#475569"],
+              fontSize: "12px",
+            },
+          },
         },
         yaxis: {
-          categories: weeklyData.map((item) => item.label),
+          labels: {
+            minWidth: 36,
+            style: {
+              colors: ["#475569"],
+              fontSize: "12px",
+            },
+          },
         },
       },
     }),
@@ -431,6 +454,13 @@ export default function AnalyticsPage() {
     setSearchParams(next);
   };
 
+  const applyRange = (range) => {
+    const next = new URLSearchParams(searchParams);
+    if (range === 7) next.delete("range");
+    else next.set("range", String(range));
+    setSearchParams(next);
+  };
+
   const statsQuery = searchParams.toString();
   const statsHref = `/stats/${encodeURIComponent(serviceNo)}${statsQuery ? `?${statsQuery}` : ""}`;
 
@@ -453,18 +483,48 @@ export default function AnalyticsPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <AnalyticsDatePicker value={selectedDayKey} max={todayKey} onApply={applySelectedDay} />
+            <button
+              type="button"
+              className="h-11 px-4 rounded-lg bg-indigo-600 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition"
+            >
+              Performance Report
+            </button>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-3 pb-2">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1">
             <div className="text-sm font-semibold text-gray-900">Daily Consumption (Peak vs Non-Peak)</div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => applyRange(7)}
+                className={`px-3 py-1 text-xs rounded border transition ${
+                  selectedRange === 7
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Last 7 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRange(30)}
+                className={`px-3 py-1 text-xs rounded border transition ${
+                  selectedRange === 30
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Last 30 Days
+              </button>
+            </div>
           </div>
 
           <Chart options={dailyConsumptionChart.options} series={dailyConsumptionChart.series} type="bar" height={300} />
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[0.62fr_1.18fr_1.2fr] gap-2.5">
+        <div className="grid w-full grid-cols-1 items-stretch gap-2.5 xl:grid-cols-[230px_minmax(0,1.08fr)_minmax(0,1.32fr)]">
           <div className="space-y-2.5">
             <div className="bg-white rounded-lg shadow p-2.5 text-center">
               <div className="text-xs text-gray-500">Power Factor (Min)</div>
@@ -490,12 +550,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-2.5">
+          <div className="min-w-0 bg-white rounded-lg shadow p-2.5">
             <div className="text-center text-sm font-semibold text-gray-900 mb-1">Tariff Split (kWh)</div>
             <Chart options={tariffSplitChart.options} series={tariffSplitChart.series} type="donut" height={220} />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-2.5">
+          <div className="min-w-0 bg-white rounded-lg shadow p-2.5">
             <div className="flex items-center justify-between mb-1.5 gap-3">
               <div className="text-sm font-semibold text-gray-900">Monthly Usage by Day</div>
               <AnalyticsMonthPicker value={weeklyMonth} maxKey={todayKey} onApply={applyMonth} />
