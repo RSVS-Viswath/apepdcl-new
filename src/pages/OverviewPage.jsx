@@ -6,7 +6,7 @@ import { seededInt, seededNumber, seededShuffle } from "../lib/seeded";
 import { defaultOverviewStartKey, fromDateKey, toDateKey, todayDateKey } from "../lib/dateKey";
 import { DISTRICT_OPTIONS, getAllConsumers } from "../lib/consumers";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FiActivity, FiPercent, FiTrendingUp, FiUsers } from "react-icons/fi";
+import { FiActivity, FiMaximize2, FiPercent, FiTrendingUp, FiUsers, FiX } from "react-icons/fi";
 import { FaTrophy } from "react-icons/fa";
 
 // Match legacy client theme graph palette
@@ -104,6 +104,52 @@ const DISTRICT_PREFIX_ALIASES = {
   MNY: "MNY",
   KSM: "KSM",
 };
+const INDUSTRIAL_CONSUMER_TYPES = [
+  "Manufacturing",
+  "Agro Processing",
+  "Food Processing",
+  "Textile",
+  "Chemical",
+  "Pharma",
+  "Metal",
+  "Construction",
+  "Energy",
+  "Cold Storage",
+  "Minerals",
+  "Cement",
+  "Ceramics",
+  "Plastics",
+  "Paper",
+  "Engineering",
+  "Electronics",
+  "Automotive",
+  "Marine",
+  "Packaging",
+  "Warehousing",
+];
+const COMMERCIAL_CONSUMER_TYPES = [
+  "Retail",
+  "Offices",
+  "Hospitality",
+  "Healthcare",
+  "Education",
+  "Finance",
+  "Logistics",
+  "Tech",
+  "Manufacturing Services",
+  "Shopping Malls",
+  "Showrooms",
+  "Theatres",
+  "Restaurants",
+  "Telecom",
+  "IT Parks",
+  "Banks",
+  "Clinics",
+  "Supermarkets",
+  "Travel",
+  "Storage",
+  "Mixed Use",
+];
 
 function geometryToMaskRings(geometry) {
   if (!geometry) return [];
@@ -452,6 +498,43 @@ function LeaderboardTable({ title, rows, onRowClick, onViewMore, className }) {
             </div>
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ConsumerTypesModal({ open, title, chartConfig, onClose }) {
+  if (!open || !chartConfig) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Expanded View</div>
+            <div className="mt-1 text-lg font-semibold text-slate-900">{title}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+            aria-label="Close consumer types modal"
+          >
+            <FiX className="text-lg" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-5 pb-5 pt-4">
+          <Chart
+            options={chartConfig.options}
+            series={chartConfig.series}
+            type="bar"
+            height={Math.max(540, chartConfig.categories.length * 28 + 120)}
+          />
+        </div>
       </div>
     </div>
   );
@@ -878,6 +961,7 @@ function AndhraConsumerMap({ consumers, onConsumerClick, tab }) {
 export default function OverviewPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [isConsumerTypesModalOpen, setIsConsumerTypesModalOpen] = useState(false);
   const defaultStart = useMemo(() => defaultOverviewStartKey(), []);
   const todayKey = useMemo(() => todayDateKey(), []);
   const allConsumers = useMemo(() => getAllConsumers(), []);
@@ -961,39 +1045,80 @@ export default function OverviewPage() {
   }, [filteredConsumers]);
 
   const consumerTypesBar = useMemo(() => {
-    const cfg =
-      tab === "Industrial"
-        ? ["Manufacturing", "Agro", "Food", "Others", "Textile", "Chemical", "Pharma", "Metal", "Construction", "Energy"]
-        : ["Retail", "Offices", "Hospitality", "Others", "Healthcare", "Education", "Finance", "Logistics", "Tech", "Manufacturing"];
-
+    const cfg = tab === "Industrial" ? INDUSTRIAL_CONSUMER_TYPES : COMMERCIAL_CONSUMER_TYPES;
     const scopeScale = participantScope === "active" ? 0.62 : 1;
-    const series = cfg.map((label) => Math.max(8, Math.round(seededInt(`${seed}|consumerTypes|${label}`, 20, 110) * scopeScale)));
+    const rawRows = cfg.map((label) => ({
+      label,
+      value: Math.max(8, Math.round(seededInt(`${seed}|consumerTypes|${label}`, 20, 110) * scopeScale)),
+    }));
+    const sortedRows = [...rawRows].sort((a, b) => b.value - a.value);
+    const topFive = sortedRows.slice(0, 5);
+    const otherValue = sortedRows.slice(5).reduce((sum, row) => sum + row.value, 0);
+    const summaryRows = otherValue > 0 ? [...topFive, { label: "Other", value: otherValue, isOther: true }] : topFive;
+
+    const buildOptions = (rows, heightMode = "compact") => ({
+      chart: {
+        type: "bar",
+        toolbar: { show: false },
+        events:
+          heightMode === "compact"
+            ? {
+                dataPointSelection: (_event, _chartContext, config) => {
+                  const selectedLabel = rows[config?.dataPointIndex]?.label;
+                  if (selectedLabel === "Other") {
+                    setIsConsumerTypesModalOpen(true);
+                  }
+                },
+              }
+            : {},
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          barHeight: heightMode === "compact" ? "56%" : "62%",
+          borderRadius: 7,
+          borderRadiusApplication: "end",
+          distributed: true,
+        },
+      },
+      dataLabels: {
+        enabled: false,
+      },
+      xaxis: {
+        categories: rows.map((row) => row.label),
+        labels: { style: { colors: ["#475569"], fontSize: "12px" } },
+      },
+      yaxis: {
+        labels: { style: { colors: ["#475569"], fontSize: "12px" } },
+      },
+      tooltip: {
+        theme: "light",
+        fillSeriesColor: false,
+        y: {
+          formatter: (value) => `${Number(value).toLocaleString("en-IN")} consumers`,
+        },
+      },
+      grid: {
+        borderColor: "#e2e8f0",
+        strokeDashArray: 3,
+      },
+      legend: { show: false },
+      colors: rows.map((row, index) => {
+        if (row.label === "Other") return "#94a3b8";
+        return index < 3 ? "#13C4A9" : "#5eead4";
+      }),
+    });
+
     return {
-      series: [{ name: "Consumers", data: series }],
-      options: {
-        chart: { type: "bar", toolbar: { show: false } },
-        plotOptions: {
-          bar: {
-            horizontal: true,
-            barHeight: "60%",
-            borderRadius: 6,
-            borderRadiusApplication: "end",
-          },
-        },
-        dataLabels: { enabled: false },
-        xaxis: {
-          categories: cfg,
-          labels: { style: { colors: ["#475569"], fontSize: "12px" } },
-        },
-        yaxis: {
-          labels: { style: { colors: ["#475569"], fontSize: "12px" } },
-        },
-        tooltip: {
-          theme: "light",
-          fillSeriesColor: false,
-        },
-        legend: { show: false },
-        colors: [TEAL],
+      title: `${tab} Consumer Types`,
+      categories: rawRows,
+      summaryRows,
+      series: [{ name: "Consumers", data: summaryRows.map((row) => row.value) }],
+      options: buildOptions(summaryRows),
+      fullChart: {
+        categories: sortedRows,
+        series: [{ name: "Consumers", data: sortedRows.map((row) => row.value) }],
+        options: buildOptions(sortedRows, "full"),
       },
     };
   }, [participantScope, seed, tab]);
@@ -1185,7 +1310,17 @@ export default function OverviewPage() {
               </>
             ) : (
               <>
-                <div className="text-sm font-semibold mb-2">Types of Consumers</div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold">Types of Consumers</div>
+                  <button
+                    type="button"
+                    onClick={() => setIsConsumerTypesModalOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-800"
+                  >
+                    <FiMaximize2 className="text-[13px]" />
+                    Expand
+                  </button>
+                </div>
                 <Chart
                   options={consumerTypesBar.options}
                   series={consumerTypesBar.series}
@@ -1240,6 +1375,13 @@ export default function OverviewPage() {
 
         <AndhraConsumerMap consumers={mapConsumers} onConsumerClick={onRowClick} tab={tab} />
       </div>
+
+      <ConsumerTypesModal
+        open={isConsumerTypesModalOpen && tab !== "All"}
+        title={consumerTypesBar.title}
+        chartConfig={consumerTypesBar.fullChart}
+        onClose={() => setIsConsumerTypesModalOpen(false)}
+      />
     </div>
   );
 }

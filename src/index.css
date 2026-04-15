@@ -88,5 +88,255 @@
     animation: pulse-dot 2s ease-in-out infinite;
   }
 
-  
-  
+@keyframes infra-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes infra-pulse-glow {
+  0%, 100% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.35));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.7));
+  }
+}
+
+@keyframes infra-wave {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(2px);
+    opacity: 1;
+  }
+}
+
+@keyframes infra-smoke {
+  0% {
+    opacity: 0.25;
+    transform: translateY(0) scale(0.85);
+  }
+  100% {
+    opacity: 0.75;
+    transform: translateY(-5px) scale(1.08);
+  }
+}
+
+@keyframes infra-flame {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05) translateY(-1px);
+  }
+}
+
+@keyframes infra-generator {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.infra-energy-marker {
+  background: transparent;
+  border: 0;
+}
+
+.infra-energy-icon {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+}
+
+.infra-energy-icon svg {
+  width: 34px;
+  height: 34px;
+  overflow: visible;
+}
+
+.infra-energy-glyph {
+  color: #f8fafc;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, 0.28));
+}
+
+.infra-energy-glyph--spin {
+  animation: infra-spin 4.8s linear infinite;
+}
+
+.infra-energy-glyph--pulse {
+  animation: infra-pulse-glow 2.2s ease-in-out infinite;
+}
+
+.infra-energy-badge {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f8fafc;
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.infra-energy-icon--solar {
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.96), rgba(30, 41, 59, 0.96));
+}
+
+.infra-energy-icon--wind {
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.96), rgba(30, 41, 59, 0.96));
+}
+
+.infra-energy-icon--hydro {
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.96), rgba(15, 23, 42, 0.96));
+}
+
+.infra-energy-icon--coal,
+.infra-energy-icon--diesel,
+.infra-energy-icon--other {
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.98), rgba(15, 23, 42, 0.96));
+}
+
+.infra-energy-icon--gas {
+  background: linear-gradient(180deg, rgba(124, 45, 18, 0.96), rgba(30, 41, 59, 0.96));
+}
+
+.infra-energy-icon--nuclear {
+  background: linear-gradient(180deg, rgba(76, 29, 149, 0.96), rgba(30, 41, 59, 0.96));
+}
+
+.infra-spin-blades {
+  transform-origin: center;
+  animation: infra-spin 3.5s linear infinite;
+}
+
+.infra-spin-slow {
+  transform-origin: center;
+  animation: infra-spin 8s linear infinite;
+}
+
+.infra-solar-sun {
+  animation: infra-pulse-glow 2.4s ease-in-out infinite;
+}
+
+.infra-water-wave {
+  animation: infra-wave 2.2s ease-in-out infinite;
+}
+
+.infra-water-wave--two {
+  animation-delay: 0.5s;
+}
+
+.infra-smoke {
+  transform-origin: center;
+  animation: infra-smoke 2.2s ease-in-out infinite alternate;
+}
+
+.infra-smoke--two {
+  animation-delay: 0.6s;
+}
+
+.infra-flame-outer,
+.infra-flame-inner {
+  transform-origin: center bottom;
+  animation: infra-flame 1.8s ease-in-out infinite;
+}
+
+.infra-flame-inner {
+  animation-delay: 0.3s;
+}
+
+.infra-generator-pulse {
+  animation: infra-generator 1.6s ease-in-out infinite;
+}
+
+.infra-pole-marker {
+  background: transparent;
+  border: 0;
+}
+
+.infra-pole-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.25));
+}
+
+.infra-pole-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.infra-pole-glyph {
+  width: 18px;
+  height: 18px;
+  color: #0f172a;
+}
+
+.infra-node-marker {
+  background: transparent;
+  border: 0;
+}
+
+.infra-node-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.24);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.96));
+}
+
+.infra-node-glyph {
+  width: 18px;
+  height: 18px;
+  color: #f8fafc;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.22));
+}
+
+.infra-node-icon--substation,
+.infra-node-icon--dist-substation {
+  background: linear-gradient(180deg, rgba(194, 65, 12, 0.96), rgba(120, 53, 15, 0.96));
+}
+
+.infra-node-icon--feeder {
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.96), rgba(146, 64, 14, 0.96));
+}
+
+.infra-node-icon--transformer {
+  background: linear-gradient(180deg, rgba(126, 34, 206, 0.96), rgba(76, 29, 149, 0.96));
+}
+
+.infra-node-icon--industry {
+  background: linear-gradient(180deg, rgba(13, 148, 136, 0.96), rgba(15, 118, 110, 0.96));
+}
+
+.infra-node-icon--consumer {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.96), rgba(30, 41, 59, 0.96));
+}

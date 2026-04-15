@@ -160,7 +160,7 @@ export default function HeatmapPage() {
       plotOptions: {
         heatmap: {
           shadeIntensity: 0,
-          radius: 10,
+          radius: 5,
           useFillColorAsStroke: false,
           colorScale: {
             min: 0,
