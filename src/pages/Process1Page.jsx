@@ -102,12 +102,31 @@ function getProcessActiveStatus(processKey) {
   return randomValue > 0.45;
 }
 
-function SleepingBotIcon() {
+function formatInactiveDuration(totalMinutes) {
+  const safeMinutes = Math.max(1, Math.round(Number(totalMinutes) || 0));
+  const hours = Math.floor(safeMinutes / 60);
+  const minutes = safeMinutes % 60;
+
+  if (minutes === 0) return `${hours}h`;
+  if (hours === 0) return `0h ${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
+function getProcessInactiveDuration(processKey) {
+  const inactiveMinutes = seededNumber(`${processKey}-inactive-duration`, 1, 190);
+  return formatInactiveDuration(inactiveMinutes);
+}
+
+function SleepingBotIcon({ compact = false }) {
+  const sizeClass = compact ? "h-4 w-4" : "h-5 w-5";
+  const svgSize = compact ? 12 : 14;
+  const zzzClass = compact ? "text-[6px]" : "text-[7px]";
+
   return (
-    <div className="relative inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200/90 bg-white/95 shadow-sm">
+    <div className={`relative inline-flex ${sizeClass} items-center justify-center rounded-full border border-slate-200/90 bg-white/95 shadow-sm`}>
       <svg
-        width="14"
-        height="14"
+        width={svgSize}
+        height={svgSize}
         viewBox="0 0 24 24"
         fill="none"
         className="animate-breathing-bot"
@@ -134,7 +153,7 @@ function SleepingBotIcon() {
         <path d="M15 17.2v2.1" className="sleeping-bot-line" />
       </svg>
       <span
-        className="pointer-events-none absolute -right-1 -top-1 animate-zzz text-[7px] font-black uppercase leading-none text-slate-400"
+        className={`pointer-events-none absolute -right-1 -top-1 animate-zzz ${zzzClass} font-black uppercase leading-none text-slate-400`}
         style={{
           letterSpacing: "-0.14em",
         }}
@@ -236,6 +255,15 @@ function OverviewStat({ label, value, icon, hint }) {
   );
 }
 
+function InactiveProcessBadge({ duration }) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold leading-none tabular-nums text-slate-500" title={`Inactive for ${duration}`} aria-label={`Inactive for ${duration}`}>
+      <SleepingBotIcon compact />
+      <span>{duration}</span>
+    </span>
+  );
+}
+
 function ProcessNameText({ text, className = "" }) {
   return (
     <span className="group/process-name relative block w-full min-w-0" title={text} aria-label={text}>
@@ -300,13 +328,14 @@ function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
   const tone = getProcessTone(processKey);
   const Icon = tone.icon;
   const missing = !group;
+  const inactiveDuration = !missing && isProcessActive === false ? getProcessInactiveDuration(processKey) : null;
 
   return (
     <button
       type="button"
       onClick={() => !missing && onClick(processKey)}
       disabled={missing}
-      className={`group relative flex min-h-[56px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-2.5 pr-10 text-left transition ${
+      className={`group flex min-h-[56px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${
         missing
           ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-50"
           : active
@@ -325,28 +354,28 @@ function ProcessNode({ processKey, group, active, onClick, isProcessActive }) {
         <ProcessNameText text={tone.label} className="block truncate text-[13px] font-semibold leading-tight text-[#374151]" />
       </span>
 
-      <span
-        className="shrink-0 rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-semibold tabular-nums shadow-sm"
-        style={{ color: "#4b5563" }}
-      >
-        {group ? formatKw(group.totalLoadKw) : "--"}
-      </span>
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-1">
+        <span
+          className="shrink-0 rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-semibold tabular-nums shadow-sm"
+          style={{ color: "#4b5563" }}
+        >
+          {group ? formatKw(group.totalLoadKw) : "--"}
+        </span>
 
-      {!missing && isProcessActive !== undefined && (
-        <div className="absolute right-2.5 top-2.5 shrink-0">
-          {isProcessActive ? (
+        {!missing && isProcessActive !== undefined ? (
+          isProcessActive ? (
             <div
-              className="h-3 w-3 rounded-full bg-green-500 animate-pulse-dot shadow-lg"
+              className="h-3 w-3 shrink-0 rounded-full bg-green-500 animate-pulse-dot shadow-lg"
               style={{
                 boxShadow: "0 0 8px rgba(34, 197, 94, 0.6)",
               }}
               title="Active Process"
             />
           ) : (
-            <SleepingBotIcon />
-          )}
-        </div>
-      )}
+            <InactiveProcessBadge duration={inactiveDuration} />
+          )
+        ) : null}
+      </div>
     </button>
   );
 }
